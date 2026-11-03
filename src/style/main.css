@@ -337,6 +337,67 @@ border of MUI inputs, without causing any layout shift. */
 	width: 100%;
 }
 
+/* Colour row of the card dialog, below the editor box. It is a separate
+element - the color applies to the whole card, not to the description - so
+the dialog is composed of three peer elements: title, description, color.
+The gap is wide enough for the effects of the swatches: the selected
+swatch's ring reaches 3px beyond the swatch and the hover scale (1.15)
+about 1.4px, so they must never touch the neighbouring swatches. */
+.card-dialog-color-row {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px;
+	margin-top: 16px;
+}
+
+/* Swatches of the card dialog color row, following the pattern of Joplin's
+whiteboard color swatches: round swatches with a divider border (so that
+pale colors stay visible), a scale effect on hover, a ring around the
+selected swatch, and a diagonal slash on the "no color" swatch. */
+.card-dialog-color-row > .color-swatch {
+	width: 18px;
+	height: 18px;
+	border-radius: 50%;
+	border: 1px solid var(--joplin-divider-color);
+	padding: 0;
+	cursor: pointer;
+	background: transparent;
+
+	&:hover {
+		transform: scale(1.15);
+	}
+
+	&.-active {
+		outline: 2px solid var(--joplin-color);
+		outline-offset: 1px;
+	}
+
+	/* Keyboard focus gets the same ring as the selection, so that both the
+	focus and the selection are visible, like in a radio group. */
+	&:focus-visible {
+		outline: 2px solid var(--joplin-color);
+		outline-offset: 1px;
+	}
+
+	/* "No color" swatch: diagonal slash on an empty background. */
+	&.-none {
+		position: relative;
+		background: var(--joplin-background-color);
+	}
+
+	&.-none::after {
+		content: '';
+		position: absolute;
+		top: 50%;
+		left: -1px;
+		right: -1px;
+		height: 1px;
+		background: var(--joplin-color-faded);
+		transform: rotate(-45deg);
+	}
+}
+
 .confirm-buttons {
 	display: flex;
 	justify-content: flex-end;

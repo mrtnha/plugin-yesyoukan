@@ -64,7 +64,11 @@ You can toggle at any time between the Kanban board and the underlying note by c
 
 Click on a card to open the card editor dialog, where you can edit its title and description. The description field has a formatting toolbar with the same actions as Joplin's own editor: bold, italic, hyperlink, code, bulleted list, numbered list, checkbox, indent/unindent, horizontal rule, blockquote, table and time. Pressing Tab indents the current list item and Shift+Tab unindents it, which allows creating subtasks. Pressing Enter inserts a newline, continuing lists automatically, and Ctrl/Cmd+Enter saves the card.
 
+Below the description, a row of colour swatches lets you pick the card's background colour (see [Adding colours to cards and stacks](#adding-colours-to-cards-and-stacks)). The first circle removes the colour, and the current colour is shown as selected when editing an existing card.
+
 Note that headings are not available in the card editor, because the board format itself is based on headings - bold text can be used for emphasis instead. Attaching files, linking to notes and drawings are not currently supported either.
+
+A right-click context menu on cards, providing quick actions such as changing the colour, is a potential future feature.
 
 ## Creating a note from a card
 
@@ -97,7 +101,11 @@ Now if you open the Kanban board again, the card will diplay the due date and ti
 
 ## Adding colours to cards and stacks
 
-Cards and stacks can have a colour associated with them. To assign the colour, click on the kebab button **⋮** for the card or stack, and select the colour. Note that the colours are predefined so that they look bright enough on a light theme, and dark enough on a dark theme.
+Cards and stacks can have a colour associated with them. For a card, the quickest way to assign the colour is the swatch row at the bottom of the card editor dialog; it can also be done, like for a stack, by clicking on the kebab button **⋮** of the card or stack, selecting **Properties...** and picking the colour there. Note that the colours are predefined so that they look bright enough on a light theme, and dark enough on a dark theme.
+
+The palette is ordered so that it can also be used as a priority scale: green (low / done), yellow, orange, red (urgent), followed by pink, purple and the remaining colours. The colours are deliberately vivid so that each is immediately recognizable, while staying readable: the card text keeps at least a 4.5:1 contrast (WCAG AA) on every colour, in both themes.
+
+If you switch to this fork from the official plugin: the colour palette was reordered and redefined, and colours are stored in the note by their index in the palette - boards created with the official plugin will therefore show shifted colours (and no colour at all for the ones that were dropped). Simply re-assign the colours once after switching.
 
 ## Auto-archiving
 

@@ -212,6 +212,11 @@ export default () => {
 		setFilterDialogShown(true);
 	}, []);
 
+	// Links of the card editor are opened by the app itself.
+	const onOpenLink = useCallback((link: string) => {
+		void webviewApi.postMessage({ type: 'openItem', value: link });
+	}, []);
+
 	const onAddCardRequested = useCallback<AddCardEventHandler>((event) => {
 		setCardDialogState({ type: 'add', stackId: event.stackId });
 	}, []);
@@ -335,7 +340,7 @@ export default () => {
 					appSettings={appSettings}
 					isDarkMode={isDarkMode}
 					platform={platform}
-					onOpenLink={(link: string) => { void webviewApi.postMessage({ type: 'openItem', value: link }); }}
+					onOpenLink={onOpenLink}
 					onCancel={() => {
 						setCardDialogState(null);
 					}}
@@ -356,9 +361,10 @@ export default () => {
 				appSettings={appSettings}
 				isDarkMode={isDarkMode}
 				platform={platform}
-				onOpenLink={(link: string) => { void webviewApi.postMessage({ type: 'openItem', value: link }); }}
+				onOpenLink={onOpenLink}
 				initialTitle={card.title}
 				initialDescription={card.body}
+				initialColor={card.settings?.backgroundColor ? String(card.settings.backgroundColor) : ''}
 				onCancel={() => {
 					setCardDialogState(null);
 				}}

@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button, Dialog, DialogActions, DialogContent, DialogTitle, TextField, Typography } from '@mui/material';
 import moveCaretToEnd from '../utils/moveCaretToEnd';
 import CardDialogToolbar, { FormattingCommand } from './CardDialogToolbar';
+import CardDialogColorRow from './CardDialogColorRow';
 import CardDialogEditor, { CardEditorHandle } from './editor/CardDialogEditor';
 import {
 	TextState,
@@ -13,10 +14,14 @@ import {
 import { formatDateTime } from '../utils/time';
 import { trimCardBody } from '../utils/noteParser';
 import { AppSettings, Platform } from '../utils/types';
+import { darkBackgroundColors, lightBackgroundColors } from '../utils/colors';
 
 export interface CardDialogData {
 	title: string;
 	description: string;
+	// The selected background color: a palette ID as a string (e.g. '3'),
+	// or '' for no color.
+	color: string;
 }
 
 interface Props {
@@ -30,6 +35,9 @@ interface Props {
 	// Only used in edit mode - the current title and description of the card.
 	initialTitle?: string;
 	initialDescription?: string;
+	// Only used in edit mode - the current background color of the card
+	// (a palette ID as a string, e.g. '3', or '' for no color).
+	initialColor?: string;
 }
 
 // Dialog that lets the user add a new card (mode "add") or edit an existing
@@ -37,7 +45,9 @@ interface Props {
 //
 // The title is required - the dialog can only be confirmed once the title is
 // non-empty. The description is optional and multi-line, and has a formatting
-// toolbar with the same actions as Joplin's own editor.
+// toolbar with the same actions as Joplin's own editor. Below the description,
+// a row of color swatches sets the card's background color, using the same
+// palette as the card properties dialog.
 //
 // Keyboard behaviour:
 // - Title: Enter confirms the dialog, Tab moves to the description editor.
@@ -48,6 +58,7 @@ interface Props {
 // - Escape closes the dialog (handled by the dialog itself).
 export default (props:Props) => {
 	const [title, setTitle] = useState(props.initialTitle ?? '');
+	const [color, setColor] = useState(props.initialColor ?? '');
 	const [linkDialogState, setLinkDialogState] = useState<{ label: string, url: string }|null>(null);
 	const [discardDialogShown, setDiscardDialogShown] = useState(false);
 	const titleInputRef = useRef<HTMLInputElement>(null);
@@ -56,6 +67,10 @@ export default (props:Props) => {
 	const labels = props.mode === 'edit'
 		? { dialogTitle: 'Edit card', confirmButton: 'Save' }
 		: { dialogTitle: 'Add card', confirmButton: 'Add' };
+
+	// The swatches show the palette of the current theme, like the color
+	// classes of the board (.background-N, generated for the active palette).
+	const backgroundColors = props.isDarkMode ? darkBackgroundColors : lightBackgroundColors;
 
 	useEffect(() => {
 		// Focus the title field when the dialog opens. MUI normally focuses the
@@ -77,14 +92,16 @@ export default (props:Props) => {
 		props.onConfirm({
 			title: title.trim(),
 			description: trimCardBody(editorRef.current.getValue()),
+			color,
 		});
-	}, [props.onConfirm, title]);
+	}, [props.onConfirm, title, color]);
 
 	const isDirty = useCallback(() => {
 		if (title !== (props.initialTitle ?? '')) return true;
+		if (color !== (props.initialColor ?? '')) return true;
 		const editorValue = editorRef.current ? editorRef.current.getValue() : '';
 		return editorValue !== (props.initialDescription ?? '');
-	}, [title, props.initialTitle, props.initialDescription]);
+	}, [title, props.initialTitle, color, props.initialColor, props.initialDescription]);
 
 	const onEditorCancel = useCallback(() => {
 		// Do not close the dialog directly when there are unsaved changes -
@@ -270,6 +287,13 @@ export default (props:Props) => {
 					/>
 					<CardDialogToolbar onCommand={onFormattingCommand} />
 				</div>
+				{/* The color row is a separate element below the editor box:
+				the color applies to the whole card, not to the description. */}
+				<CardDialogColorRow
+					colors={backgroundColors}
+					value={color}
+					onChange={setColor}
+				/>
 			</DialogContent>
 			<DialogActions>
 				<Button onClick={onEditorCancel}>Cancel</Button>

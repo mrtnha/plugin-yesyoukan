@@ -57,7 +57,7 @@ const SettingsDialog: React.FC<Props> = (props:Props) => {
 					{...baseGenericControlProps}
 					control={() => <ColorPicker
 						colors={props.backgroundColor}
-						value={currentValue as number || 0}
+						value={typeof currentValue === 'string' ? currentValue : ''}
 						onChange={(color) => handleChange(key, color)}
 						isDarkMode={props.isDarkMode}
 					/>}

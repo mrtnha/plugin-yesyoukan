@@ -53,6 +53,16 @@ export default (props:Props) => {
 			const card = draft.stacks[stackIndex].cards[cardIndex];
 			card.title = event.title.trim();
 			card.body = trimCardBody(event.description);
+
+			// The color comes from the swatch row of the card dialog: a
+			// palette ID as a string, or '' for no color. An empty color
+			// removes the setting, so that no card-settings block is left
+			// behind in the note.
+			if (event.color) {
+				card.settings = { ...card.settings, backgroundColor: event.color };
+			} else if (card.settings?.backgroundColor) {
+				delete card.settings.backgroundColor;
+			}
 		});
 
 		props.setBoard(newBoard);
@@ -68,9 +78,15 @@ export default (props:Props) => {
 
 		const newBoard = produce(props.board, draft => {
 			const stackIndex = findStackIndex(draft, event.stackId);
+			const card = createCard(event.title.trim(), trimCardBody(event.description));
+
+			// The color comes from the swatch row of the card dialog: a
+			// palette ID as a string, or '' for no color.
+			if (event.color) card.settings = { backgroundColor: event.color };
+
 			insertCardByLocation(
 				draft.stacks[stackIndex].cards,
-				createCard(event.title.trim(), trimCardBody(event.description)),
+				card,
 				props.cardInsertLocation
 			);
 		});
