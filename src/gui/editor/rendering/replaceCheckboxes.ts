@@ -5,13 +5,11 @@
 // These extensions implement the "Render markup in editor" feature of
 // Joplin's Markdown editor: marker characters are hidden and replaced with
 // widgets (checkboxes, bullet points, dividers) and formatting is rendered
-// inline. Modifications, if any, are marked with "MODIFIED" comments.
+// inline.
 //
 import { Decoration, EditorView, WidgetType } from '@codemirror/view';
 import { SyntaxNodeRef } from '@lezer/common';
 import makeReplaceExtension from './utils/makeInlineReplaceExtension';
-// MODIFIED: path adjusted to the vendored directory structure (this plugin
-// does not have the "extensions/" level of the Joplin source)
 import toggleCheckboxAt from '../utils/markdown/toggleCheckboxAt';
 
 const checkboxClassName = 'cm-ext-checkbox-toggle';
@@ -133,6 +131,9 @@ const replaceCheckboxes = [
 				// Reveal if cursor touches the checkbox or the list bullet point
 				return rangeContains(selection.from) || rangeContains(selection.to)
 					|| selectionContains(rangeFrom) || selectionContains(rangeTo);
+			}
+			if (node.name === 'Task') {
+				return false;
 			}
 			return 'line';
 		},

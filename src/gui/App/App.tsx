@@ -333,6 +333,9 @@ export default () => {
 				<CardDialog
 					mode="add"
 					appSettings={appSettings}
+					isDarkMode={isDarkMode}
+					platform={platform}
+					onOpenLink={(link: string) => { void webviewApi.postMessage({ type: 'openItem', value: link }); }}
 					onCancel={() => {
 						setCardDialogState(null);
 					}}
@@ -351,6 +354,9 @@ export default () => {
 			<CardDialog
 				mode="edit"
 				appSettings={appSettings}
+				isDarkMode={isDarkMode}
+				platform={platform}
+				onOpenLink={(link: string) => { void webviewApi.postMessage({ type: 'openItem', value: link }); }}
 				initialTitle={card.title}
 				initialDescription={card.body}
 				onCancel={() => {

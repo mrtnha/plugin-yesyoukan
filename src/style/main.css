@@ -332,21 +332,9 @@ border of MUI inputs, without causing any layout shift. */
 	border-bottom: 1px solid var(--joplin-divider-color);
 }
 
-/* Description text area of the card dialog, inside the editor box. The focus
-is shown on the editor box itself (see :focus-within above), so the native
-browser focus outline is suppressed here. The area can only be resized
-vertically, never horizontally. */
-.card-dialog-editor > .note-editor {
-	height: 10em;
-	min-height: 6em;
+/* Host of the CodeMirror description editor, inside the editor box */
+.card-dialog-editor-host {
 	width: 100%;
-	border: none;
-	outline: none;
-	resize: vertical;
-	line-height: 1.6em;
-	padding: 8px 10px;
-	background-color: var(--joplin-background-color);
-	color: var(--joplin-color);
 }
 
 .confirm-buttons {

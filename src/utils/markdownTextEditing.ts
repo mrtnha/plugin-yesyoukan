@@ -21,24 +21,6 @@ export interface TextState {
 export const indentUnit = '    ';
 
 // ----------------------------------------------------------------------------
-// Text area helpers (the only functions that touch the DOM)
-// ----------------------------------------------------------------------------
-
-export const getTextareaState = (textarea: HTMLTextAreaElement): TextState => {
-	return {
-		value: textarea.value,
-		selectionStart: textarea.selectionStart,
-		selectionEnd: textarea.selectionEnd,
-	};
-};
-
-export const setTextareaState = (textarea: HTMLTextAreaElement, state: TextState) => {
-	textarea.value = state.value;
-	textarea.selectionStart = state.selectionStart;
-	textarea.selectionEnd = state.selectionEnd;
-};
-
-// ----------------------------------------------------------------------------
 // Line utilities
 // ----------------------------------------------------------------------------
 

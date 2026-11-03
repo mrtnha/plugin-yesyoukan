@@ -3,15 +3,15 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button, Dialog, DialogActions, DialogContent, DialogTitle, TextField } from '@mui/material';
 import moveCaretToEnd from '../utils/moveCaretToEnd';
 import CardDialogToolbar, { FormattingCommand } from './CardDialogToolbar';
+import CardDialogEditor, { CardEditorHandle } from './editor/CardDialogEditor';
 import {
-	TextState, getTextareaState, setTextareaState,
+	TextState,
 	toggleInlineFormat, toggleCode, toggleList, ListType, toggleBlockquote,
-	indentLines, unindentLines, continueListMarkup,
+	indentLines, unindentLines,
 	insertHorizontalRule, insertTable, insertTextAtCursor, insertLink,
-	lineIsListItem, indentUnit,
 } from '../utils/markdownTextEditing';
 import { formatDateTime } from '../utils/time';
-import { AppSettings } from '../utils/types';
+import { AppSettings, Platform } from '../utils/types';
 
 export interface CardDialogData {
 	title: string;
@@ -21,6 +21,9 @@ export interface CardDialogData {
 interface Props {
 	mode: 'add' | 'edit';
 	appSettings: AppSettings;
+	isDarkMode: boolean;
+	platform: Platform;
+	onOpenLink: (link: string) => void;
 	onConfirm: (data:CardDialogData) => void;
 	onCancel: () => void;
 	// Only used in edit mode - the current title and description of the card.
@@ -36,7 +39,7 @@ interface Props {
 // toolbar with the same actions as Joplin's own editor.
 //
 // Keyboard behaviour:
-// - Title: Enter confirms the dialog, Tab moves to the description field.
+// - Title: Enter confirms the dialog, Tab moves to the description editor.
 // - Description: Enter inserts a newline (continuing list markup like
 //   Joplin's editor), Ctrl/Cmd+Enter confirms the dialog, Tab indents the
 //   current list item (or inserts an indent unit outside of a list), and
@@ -46,7 +49,7 @@ export default (props:Props) => {
 	const [title, setTitle] = useState(props.initialTitle ?? '');
 	const [linkDialogState, setLinkDialogState] = useState<{ label: string, url: string }|null>(null);
 	const titleInputRef = useRef<HTMLInputElement>(null);
-	const descriptionRef = useRef<HTMLTextAreaElement>(null);
+	const editorRef = useRef<CardEditorHandle|null>(null);
 
 	const labels = props.mode === 'edit'
 		? { dialogTitle: 'Edit card', confirmButton: 'Save' }
@@ -71,7 +74,7 @@ export default (props:Props) => {
 
 		props.onConfirm({
 			title: title.trim(),
-			description: descriptionRef.current.value.trim(),
+			description: editorRef.current.getValue().trim(),
 		});
 	}, [props.onConfirm, title]);
 
@@ -80,12 +83,13 @@ export default (props:Props) => {
 	}, [props.onCancel]);
 
 	// Applies a text transformation to the description. The toolbar buttons
-	// take the focus away from the text area when clicked, so the focus is
+	// take the focus away from the editor when clicked, so the focus is
 	// restored afterwards.
-	const applyToDescription = useCallback((transform:(state:TextState)=>TextState) => {
-		const textarea = descriptionRef.current;
-		setTextareaState(textarea, transform(getTextareaState(textarea)));
-		textarea.focus();
+	const applyToDescription = useCallback((transform:(state:TextState)=>TextState|null) => {
+		const handle = editorRef.current;
+		if (!handle) return;
+		handle.applyTransform(transform);
+		handle.focus();
 	}, []);
 
 	const onFormattingCommand = useCallback((command: FormattingCommand) => {
@@ -97,8 +101,11 @@ export default (props:Props) => {
 			applyToDescription(s => toggleInlineFormat(s, '*'));
 			break;
 		case 'link': {
+			const handle = editorRef.current;
+			if (!handle) break;
+
 			// Pre-fill the label with the current selection, if any
-			const state = getTextareaState(descriptionRef.current);
+			const state = handle.getTextState();
 			setLinkDialogState({
 				label: state.value.slice(state.selectionStart, state.selectionEnd),
 				url: '',
@@ -193,48 +200,13 @@ export default (props:Props) => {
 		if (event.key === 'Enter') {
 			event.preventDefault();
 			onEditorSubmit();
+		} else if (event.key === 'Tab' && !event.shiftKey) {
+			// Tab skips the toolbar buttons and moves directly into the
+			// description editor
+			event.preventDefault();
+			editorRef.current?.focus();
 		}
 	}, [onEditorSubmit]);
-
-	const onDescriptionKeyDown = useCallback<React.KeyboardEventHandler>((event) => {
-		if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
-			// Ctrl/Cmd+Enter is the universal way to confirm from a multi-line
-			// field - plain Enter always inserts a newline.
-			event.preventDefault();
-			onEditorSubmit();
-		} else if (event.key === 'Tab') {
-			// Tab indents the current list item (and any selected lines).
-			// Outside of a list, it inserts an indent unit, like Joplin's
-			// editor. Shift+Tab unindents.
-			event.preventDefault();
-			if (event.shiftKey) {
-				applyToDescription(unindentLines);
-			} else {
-				const state = getTextareaState(descriptionRef.current);
-				if (lineIsListItem(state) || state.selectionStart !== state.selectionEnd) {
-					applyToDescription(indentLines);
-				} else {
-					applyToDescription(s => insertTextAtCursor(s, indentUnit));
-				}
-			}
-		} else if ((event.ctrlKey || event.metaKey) && event.key === ']') {
-			// Same shortcuts as Joplin's editor
-			event.preventDefault();
-			applyToDescription(indentLines);
-		} else if ((event.ctrlKey || event.metaKey) && event.key === '[') {
-			event.preventDefault();
-			applyToDescription(unindentLines);
-		} else if (event.key === 'Enter') {
-			// Continue the list markup when pressing Enter at the end of a list
-			// item, like Joplin's editor - otherwise let the browser insert a
-			// plain newline.
-			const newState = continueListMarkup(getTextareaState(descriptionRef.current));
-			if (newState) {
-				event.preventDefault();
-				setTextareaState(descriptionRef.current, newState);
-			}
-		}
-	}, [onEditorSubmit, applyToDescription]);
 
 	return (
 		<Dialog open={true} onClose={onEditorCancel} fullWidth maxWidth="sm">
@@ -249,17 +221,18 @@ export default (props:Props) => {
 					onChange={(event) => setTitle(event.currentTarget.value)}
 					onKeyDown={onTitleKeyDown}
 				/>
-				{/* The text area comes before the toolbar in the DOM so that Tab from
+				{/* The editor comes before the toolbar in the DOM so that Tab from
 				the title field moves directly into the text, skipping the toolbar
-				buttons. The CSS visually places the toolbar above the text area. */}
+				buttons. The CSS visually places the toolbar above the editor. */}
 				<div className="card-dialog-editor">
-					<textarea
-						ref={descriptionRef}
-						className="note-editor"
-						placeholder="Description (optional)"
-						defaultValue={props.initialDescription ?? ''}
-						onKeyDown={onDescriptionKeyDown}
-					></textarea>
+					<CardDialogEditor
+						editorHandleRef={editorRef}
+						initialValue={props.initialDescription ?? ''}
+						isDarkMode={props.isDarkMode}
+						platform={props.platform}
+						onOpenLink={props.onOpenLink}
+						onSubmit={onEditorSubmit}
+					/>
 					<CardDialogToolbar onCommand={onFormattingCommand} />
 				</div>
 			</DialogContent>
