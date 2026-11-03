@@ -11,6 +11,7 @@ import {
 	insertHorizontalRule, insertTable, insertTextAtCursor, insertLink,
 } from '../utils/markdownTextEditing';
 import { formatDateTime } from '../utils/time';
+import { trimCardBody } from '../utils/noteParser';
 import { AppSettings, Platform } from '../utils/types';
 
 export interface CardDialogData {
@@ -74,7 +75,7 @@ export default (props:Props) => {
 
 		props.onConfirm({
 			title: title.trim(),
-			description: editorRef.current.getValue().trim(),
+			description: trimCardBody(editorRef.current.getValue()),
 		});
 	}, [props.onConfirm, title]);
 

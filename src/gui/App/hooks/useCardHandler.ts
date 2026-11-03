@@ -7,7 +7,7 @@ import { PushUndo } from "./useHistory";
 import { findCard, findCardIndex, findStackIndex } from "../../../utils/board";
 import { AddCardEvent } from "../../../gui/StackViewer";
 import { CardDialogData } from "../../../gui/CardDialog";
-import { parseAsNoteLink, serializeNoteToCard } from "../../../utils/noteParser";
+import { parseAsNoteLink, serializeNoteToCard, trimCardBody } from "../../../utils/noteParser";
 import { DialogConfig } from "../utils/types";
 import { createCard, duplicateCard } from '../../../utils/cards';
 
@@ -52,7 +52,7 @@ export default (props:Props) => {
 			const [stackIndex, cardIndex] = findCardIndex(draft, event.cardId);
 			const card = draft.stacks[stackIndex].cards[cardIndex];
 			card.title = event.title.trim();
-			card.body = event.description.trim();
+			card.body = trimCardBody(event.description);
 		});
 
 		props.setBoard(newBoard);
@@ -70,7 +70,7 @@ export default (props:Props) => {
 			const stackIndex = findStackIndex(draft, event.stackId);
 			insertCardByLocation(
 				draft.stacks[stackIndex].cards,
-				createCard(event.title.trim(), event.description.trim()),
+				createCard(event.title.trim(), trimCardBody(event.description)),
 				props.cardInsertLocation
 			);
 		});

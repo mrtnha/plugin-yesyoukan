@@ -1,4 +1,5 @@
 import { escapeLinkUrl, escapeTitleText } from "./markdown";
+import { isEmptyCheckboxLine } from "./checkboxes";
 import { produce } from "immer";
 import { parseBoardSettings, parseCardSettings, parseStackSettings, SettingType } from "./settings";
 import { Board, BoardSettings, Card, CardSettings, Note, PluginSettings, Stack, emptyBoard } from "./types";
@@ -36,9 +37,30 @@ export const serializeNoteToCard = (note:Note) => {
 	}
 }
 
+// Trims the whitespace around a card body - used when saving a card - but
+// preserves the trailing space of an empty checkbox marker ("- [ ] "):
+// without the space, the item is not recognized as a checkbox by the
+// Markdown parsers (see checkboxes.ts).
+export const trimCardBody = (body: string): string => {
+	const trimmed = body.trim();
+
+	const lines = body.split('\n');
+	const lastLine = lines[lines.length - 1];
+	if (isEmptyCheckboxLine(lastLine)) return `${trimmed} `;
+
+	return trimmed;
+}
+
 export const parseNote = async (noteId:string, noteBody:string) => {
 	try {
-		const lines = noteBody.split('\n').map(l => l.trimEnd());
+		// The lines are kept as-is: trailing whitespace in card bodies is
+		// meaningful in Markdown - it is required after an empty checkbox
+		// marker ("- [ ] ", otherwise the item is not recognized as a
+		// checkbox), and two trailing spaces are a hard line break. Only the
+		// carriage returns are removed, and the trailing whitespace is ignored
+		// when detecting the structural elements (stack and card titles,
+		// settings blocks).
+		const lines = noteBody.split('\n').map(l => l.replace(/\r$/, ''));
 
 		const board:Board = emptyBoard();
 
@@ -53,7 +75,8 @@ export const parseNote = async (noteId:string, noteBody:string) => {
 		let currentStack:Stack = null;
 		let currentCard:Card = null;
 
-		for (const line of lines) {
+		for (const originalLine of lines) {
+			const line = originalLine.trimEnd();
 			if (line === '```kanban-settings' || line === '```card-settings' || line === '```stack-settings') {
 				previousState = state;
 				state = 'inSettings';
@@ -100,16 +123,18 @@ export const parseNote = async (noteId:string, noteBody:string) => {
 				state = 'inBody';
 
 				if (currentCard.body) currentCard.body += '\n';
-				currentCard.body += line;
+				currentCard.body += originalLine;
 			} else if (state === 'inBody') {
 				if (currentCard.body) currentCard.body += '\n';
-				currentCard.body += line;
+				currentCard.body += originalLine;
 			}
 		}
 
 		for (const stack of board.stacks) {
 			for (const card of stack.cards) {
-				card.body = card.body.trim();
+				// Remove the trailing blank lines, but keep the trailing
+				// whitespace of the last line (e.g. the space of "- [ ] ")
+				card.body = card.body.replace(/\n\s*$/, '');
 			}
 		}
 
