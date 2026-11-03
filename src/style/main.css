@@ -70,6 +70,14 @@ ul, ol {
 		display: flex;
 		width: 100%;
 
+		/* Spacing between the header elements: the card counter at the right
+		edge of the title area would otherwise sit flush against the add and
+		kebab buttons. The gap to the buttons is larger than the gap between
+		them because the counter is bare text while the buttons carry their
+		own inner glyph padding: the visible air is the same, about 14px, on
+		both sides of the add button. */
+		gap: 8px;
+
 		> .title-wrapper {
 			display: flex;
 			flex-grow: 1;
@@ -134,6 +142,7 @@ ul, ol {
 			justify-content: flex-end;
 			align-items: center;
 			flex: 1;
+			gap: 2px;
 			padding-right: 4px;
 		}
 	}
