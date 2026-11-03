@@ -1,4 +1,5 @@
 import Logger from "@joplin/utils/Logger";
+import { isEmptyCheckboxLine } from "./checkboxes";
 import { CardToRender, Note, RenderedCard, RenderResult } from "./types";
 
 const logger = Logger.create('YesYouCan: processRenderedCards');
@@ -8,6 +9,17 @@ export const titleBodyDivider = 'YESYOUKANTITLEBODYMARKER';
 export const cardDivider = 'YESYOUKANCARDDIVIDER';
 const backtickEscape = 'YESYOUKANBACKTICK';
 const backtickEscapeRegex = new RegExp(backtickEscape, 'g');
+
+// Joplin's renderer only turns a checkbox marker into a checkbox when it is
+// followed by some content ("[ ] " followed by the label): an empty checkbox
+// item ("- [ ]") is rendered as literal text. Append a non-breaking space to
+// such lines so that they are rendered as checkboxes. The space is added for
+// rendering only - the note itself is not modified.
+const renderEmptyCheckboxes = (body: string) => {
+	return body.split('\n').map(line => {
+		return isEmptyCheckboxLine(line) ? `${line} &nbsp;` : line;
+	}).join('\n');
+};
 
 const cardIdRegex = new RegExp(cardIdPlaceHolder, 'g');
 const checkboxRegex = new RegExp('checkboxclick:(unchecked|checked):([0-9]+)', 'g');
@@ -59,10 +71,10 @@ export default async (
 			}
 
 			titleToRender = note.title;
-			bodyToRender = note.body.trim();
+			bodyToRender = renderEmptyCheckboxes(note.body.trim());
 		} else { // source = card
 			titleToRender = cardToRender.cardTitle;
-			bodyToRender = cardToRender.cardBody.trim();
+			bodyToRender = renderEmptyCheckboxes(cardToRender.cardBody.trim());
 		}
 
 		if (bigDoc.length) bigDoc.push(cardDivider);

@@ -139,6 +139,37 @@ describe('processRenderedCards', () => {
 		expect(renderedCard1.body.html.includes('cardPostMessage(&quot;' + cardIds[1] + '&quot;)'));
 	});
 
+	it('should render empty checkbox items as checkboxes', async () => {
+		// Joplin's renderer does not recognize "- [ ]" without content after
+		// the marker - a non-breaking space must be appended for rendering
+		const board = await parseNote('', '# Stack\n\n## Card\n\n- [ ] task\n- [ ]\n- [x]\n');
+		const card = board.stacks[0].cards[0];
+
+		const cardsToRender:Record<string, CardToRender> = {
+			[card.id]: {
+				source: 'card',
+				cardBody: card.body,
+				cardTitle: card.title,
+				noteId: '',
+			},
+		};
+
+		let renderedMarkup = '';
+		await processRenderedCards(cardsToRender, async (noteId:string) => { return null; }, async (markup:string, _options:any) => {
+			renderedMarkup = markup;
+			return {
+				cssStrings: [],
+				html: '<div></div>',
+				pluginAssets: [],
+			}
+		});
+
+		expect(renderedMarkup.includes('- [ ] task\n')).toBe(true);
+		expect(renderedMarkup.includes('- [ ] &nbsp;\n')).toBe(true);
+		// The last line is not followed by a newline
+		expect(renderedMarkup.includes('- [x] &nbsp;')).toBe(true);
+	});
+
 	it('should handle cards with unclosed code blocks', async () => {
 		// This markdown has an unclosed code block which could cause the dividers
 		// to be absorbed into a <pre><code> block instead of being wrapped in <p> tags
