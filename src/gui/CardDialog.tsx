@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Button, Dialog, DialogActions, DialogContent, DialogTitle, TextField } from '@mui/material';
+import { Button, Dialog, DialogActions, DialogContent, DialogTitle, TextField, Typography } from '@mui/material';
 import moveCaretToEnd from '../utils/moveCaretToEnd';
 import CardDialogToolbar, { FormattingCommand } from './CardDialogToolbar';
 import CardDialogEditor, { CardEditorHandle } from './editor/CardDialogEditor';
@@ -49,6 +49,7 @@ interface Props {
 export default (props:Props) => {
 	const [title, setTitle] = useState(props.initialTitle ?? '');
 	const [linkDialogState, setLinkDialogState] = useState<{ label: string, url: string }|null>(null);
+	const [discardDialogShown, setDiscardDialogShown] = useState(false);
 	const titleInputRef = useRef<HTMLInputElement>(null);
 	const editorRef = useRef<CardEditorHandle|null>(null);
 
@@ -79,9 +80,22 @@ export default (props:Props) => {
 		});
 	}, [props.onConfirm, title]);
 
+	const isDirty = useCallback(() => {
+		if (title !== (props.initialTitle ?? '')) return true;
+		const editorValue = editorRef.current ? editorRef.current.getValue() : '';
+		return editorValue !== (props.initialDescription ?? '');
+	}, [title, props.initialTitle, props.initialDescription]);
+
 	const onEditorCancel = useCallback(() => {
+		// Do not close the dialog directly when there are unsaved changes -
+		// losing them by pressing Escape (or clicking the backdrop or the
+		// Cancel button) accidentally would be painful
+		if (isDirty()) {
+			setDiscardDialogShown(true);
+			return;
+		}
 		props.onCancel();
-	}, [props.onCancel]);
+	}, [isDirty, props.onCancel]);
 
 	// Applies a text transformation to the description. The toolbar buttons
 	// take the focus away from the editor when clicked, so the focus is
@@ -209,6 +223,26 @@ export default (props:Props) => {
 		}
 	}, [onEditorSubmit]);
 
+	const renderDiscardDialog = () => {
+		if (!discardDialogShown) return null;
+
+		return (
+			<Dialog open={true} onClose={() => setDiscardDialogShown(false)} fullWidth maxWidth="xs">
+				<DialogTitle>Discard changes?</DialogTitle>
+				<DialogContent>
+					<Typography>All your changes will be lost.</Typography>
+				</DialogContent>
+				<DialogActions>
+					<Button color="primary" onClick={() => setDiscardDialogShown(false)}>Keep editing</Button>
+					<Button color="error" onClick={() => {
+						setDiscardDialogShown(false);
+						props.onCancel();
+					}}>Discard</Button>
+				</DialogActions>
+			</Dialog>
+		);
+	}
+
 	return (
 		<Dialog open={true} onClose={onEditorCancel} fullWidth maxWidth="sm">
 			<DialogTitle>{labels.dialogTitle}</DialogTitle>
@@ -242,6 +276,7 @@ export default (props:Props) => {
 				<Button onClick={onEditorSubmit} color="primary" disabled={!title.trim()}>{labels.confirmButton}</Button>
 			</DialogActions>
 			{renderLinkDialog()}
+			{renderDiscardDialog()}
 		</Dialog>
 	);
 }
