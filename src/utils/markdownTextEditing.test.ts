@@ -65,7 +65,7 @@ describe('markdownTextEditing', () => {
 	describe('toggleList', () => {
 
 		it('should add a bulleted list marker to the current line', () => {
-			expect(toggleList(state('hello', 5), ListType.Bulleted)).toEqual(state('- hello', 0, 7));
+			expect(toggleList(state('hello', 5), ListType.Bulleted)).toEqual(state('- hello', 7));
 		});
 
 		it('should remove the bulleted list marker when all lines have it', () => {
@@ -73,7 +73,7 @@ describe('markdownTextEditing', () => {
 		});
 
 		it('should convert a bulleted item to a checkbox', () => {
-			expect(toggleList(state('- hello', 0, 7), ListType.Checkbox)).toEqual(state('- [ ] hello', 0, 11));
+			expect(toggleList(state('- hello', 0, 7), ListType.Checkbox)).toEqual(state('- [ ] hello', 4, 11));
 		});
 
 		it('should number consecutive lines', () => {
@@ -85,7 +85,7 @@ describe('markdownTextEditing', () => {
 		});
 
 		it('should preserve the indentation', () => {
-			expect(toggleList(state('    hello', 8), ListType.Bulleted)).toEqual(state('    - hello', 0, 11));
+			expect(toggleList(state('    hello', 8), ListType.Bulleted)).toEqual(state('    - hello', 10));
 		});
 
 		it('should leave blank lines untouched', () => {
@@ -96,12 +96,32 @@ describe('markdownTextEditing', () => {
 			expect(toggleList(state('- a\n- b\n- c', 0, 11), ListType.Numbered)).toEqual(state('1. a\n2. b\n3. c', 0, 14));
 		});
 
+		it('should apply the marker to an empty line, with the caret after it', () => {
+			expect(toggleList(state('', 0), ListType.Bulleted)).toEqual(state('- ', 2));
+			expect(toggleList(state('', 0), ListType.Numbered)).toEqual(state('1. ', 3));
+			expect(toggleList(state('', 0), ListType.Checkbox)).toEqual(state('- [ ] ', 6));
+		});
+
+		it('should apply the marker to an empty line in the middle of the text', () => {
+			expect(toggleList(state('a\n\nb', 2), ListType.Bulleted)).toEqual(state('a\n- \nb', 4));
+		});
+
+		it('should keep the caret at the same position in the text', () => {
+			// The caret stays between "hello" and "world" - nothing is selected
+			// that the next keystroke would replace
+			expect(toggleList(state('hello world', 5), ListType.Bulleted)).toEqual(state('- hello world', 7));
+		});
+
 	});
 
 	describe('toggleBlockquote', () => {
 
 		it('should add a quote marker to the selected lines', () => {
-			expect(toggleBlockquote(state('hello', 5))).toEqual(state('> hello', 0, 7));
+			expect(toggleBlockquote(state('hello', 5))).toEqual(state('> hello', 7));
+		});
+
+		it('should apply the quote marker to an empty line, with the caret after it', () => {
+			expect(toggleBlockquote(state('', 0))).toEqual(state('> ', 2));
 		});
 
 		it('should remove the quote marker', () => {
@@ -117,7 +137,14 @@ describe('markdownTextEditing', () => {
 	describe('indentLines / unindentLines', () => {
 
 		it('should indent the current line', () => {
-			expect(indentLines(state('hello', 5))).toEqual(state('    hello', 0, 9));
+			expect(indentLines(state('hello', 5))).toEqual(state('    hello', 9));
+		});
+
+		it('should keep the caret at the end of the line when indenting', () => {
+			// A subtask is created and the user can keep typing - nothing is
+			// selected that the next keystroke would replace
+			expect(indentLines(state('- [ ] task', 10))).toEqual(state('    - [ ] task', 14));
+			expect(indentLines(state('- [ ] ', 6))).toEqual(state('    - [ ] ', 10));
 		});
 
 		it('should indent all the selected lines', () => {
@@ -126,7 +153,7 @@ describe('markdownTextEditing', () => {
 
 		it('should restart the numbering of an ordered item moved to a deeper level', () => {
 			expect(indentLines(state('1. a\n2. b\n3. c', 5, 9)))
-				.toEqual(state('1. a\n    1. b\n2. c', 5, 13));
+				.toEqual(state('1. a\n    1. b\n2. c', 9, 13));
 		});
 
 		it('should continue the parent numbering when an item returns to the parent level', () => {
@@ -135,13 +162,17 @@ describe('markdownTextEditing', () => {
 		});
 
 		it('should unindent one indent unit (spaces or tab)', () => {
-			expect(unindentLines(state('    hello', 9))).toEqual(state('hello', 0, 5));
-			expect(unindentLines(state('\thello', 6))).toEqual(state('hello', 0, 5));
-			expect(unindentLines(state('  hello', 7))).toEqual(state('hello', 0, 5));
+			expect(unindentLines(state('    hello', 9))).toEqual(state('hello', 5));
+			expect(unindentLines(state('\thello', 6))).toEqual(state('hello', 5));
+			expect(unindentLines(state('  hello', 7))).toEqual(state('hello', 5));
+		});
+
+		it('should keep the caret at the end of the line when unindenting', () => {
+			expect(unindentLines(state('    - [ ] subtask', 17))).toEqual(state('- [ ] subtask', 13));
 		});
 
 		it('should not unindent a line that is not indented', () => {
-			expect(unindentLines(state('hello', 5))).toEqual(state('hello', 0, 5));
+			expect(unindentLines(state('hello', 5))).toEqual(state('hello', 5));
 		});
 
 	});

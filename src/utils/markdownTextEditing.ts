@@ -312,24 +312,85 @@ const renumberOrderedLists = (state: TextState): TextState => {
 	};
 };
 
+// Computes the new selection after the lines covered by the current selection
+// have been transformed (e.g. a list marker has been applied or removed).
+//
+// A caret, or a selection within one line, stays at the same position in the
+// text - moved along with the changes - so that the user can keep typing
+// right away: nothing gets selected that the next keystroke would replace. A
+// multi-line selection keeps covering the whole lines.
+const computeLineSelection = (
+	lines: string[],
+	newLines: string[],
+	bounds: LineBounds,
+	selectionStart: number,
+	selectionEnd: number,
+): { selectionStart: number, selectionEnd: number } => {
+	const lineIndexOfOffset = (offset: number): number => {
+		let pos = bounds.startIndex;
+		for (let i = 0; i < lines.length; i++) {
+			if (offset <= pos + lines[i].length || i === lines.length - 1) return i;
+			pos += lines[i].length + 1;
+		}
+		return lines.length - 1;
+	};
+
+	const startLine = lineIndexOfOffset(selectionStart);
+	const endLine = lineIndexOfOffset(Math.max(selectionStart, selectionEnd));
+
+	if (startLine !== endLine) {
+		return {
+			selectionStart: bounds.startIndex,
+			selectionEnd: bounds.startIndex + newLines.join('\n').length,
+		};
+	}
+
+	// The change happens at the beginning of the line, so the selection moves
+	// by the full length difference of the lines before it and of its own
+	// line.
+	let delta = 0;
+	for (let i = 0; i < startLine; i++) delta += newLines[i].length - lines[i].length;
+	delta += newLines[startLine].length - lines[startLine].length;
+
+	const newLineStart = startLine === 0
+		? bounds.startIndex
+		: bounds.startIndex + newLines.slice(0, startLine).join('\n').length + 1;
+	const newLineEnd = newLineStart + newLines[startLine].length;
+
+	const clamp = (offset: number) => {
+		return Math.min(Math.max(offset + delta, newLineStart), newLineEnd);
+	};
+
+	return {
+		selectionStart: clamp(selectionStart),
+		selectionEnd: clamp(selectionEnd),
+	};
+};
+
 // Toggles a list marker on the selected lines: applies the marker if they are
 // not all of the given type yet, and removes it otherwise. Converting between
-// list types replaces the marker. Blank lines are left untouched.
+// list types replaces the marker.
+//
+// Blank lines are skipped, except when they are the only lines selected: in
+// that case they get the marker anyway - like Joplin's editor - so that
+// clicking the button on an empty line is enough to start typing the list
+// item. The caret is placed right after the inserted marker.
 export const toggleList = (state: TextState, listType: ListType): TextState => {
 	const { value, selectionStart, selectionEnd } = state;
 	const bounds = lineBounds(value, selectionStart, selectionEnd);
 	const lines = value.slice(bounds.startIndex, bounds.endIndex).split('\n');
 
-	const nonEmptyLines = lines.filter(l => l.trim() !== '');
-	if (!nonEmptyLines.length) return state;
+	const processBlankLines = lines.every(l => l.trim() === '');
 
-	const allLinesAreOfType = nonEmptyLines.every(l => {
+	const linesToProcess = lines.filter(l => l.trim() !== '' || processBlankLines);
+
+	const allLinesAreOfType = linesToProcess.every(l => {
 		const item = parseListItem(l);
 		return item && item.type === listType;
 	});
 
 	const newLines = lines.map(line => {
-		if (line.trim() === '') return line;
+		if (line.trim() === '' && !processBlankLines) return line;
 
 		const item = parseListItem(line);
 		if (allLinesAreOfType) {
@@ -349,26 +410,31 @@ export const toggleList = (state: TextState, listType: ListType): TextState => {
 	const newText = newLines.join('\n');
 	const newValue = value.slice(0, bounds.startIndex) + newText + value.slice(bounds.endIndex);
 
+	const newSelection = computeLineSelection(lines, newLines, bounds, selectionStart, selectionEnd);
+
 	return renumberOrderedLists({
 		value: newValue,
-		selectionStart: bounds.startIndex,
-		selectionEnd: bounds.startIndex + newText.length,
+		selectionStart: newSelection.selectionStart,
+		selectionEnd: newSelection.selectionEnd,
 	});
 };
 
-// Toggles a blockquote marker ("> ") on the selected lines.
+// Toggles a blockquote marker ("> ") on the selected lines. Blank lines get
+// the marker when they are the only lines selected, like the list commands.
 export const toggleBlockquote = (state: TextState): TextState => {
 	const { value, selectionStart, selectionEnd } = state;
 	const bounds = lineBounds(value, selectionStart, selectionEnd);
 	const lines = value.slice(bounds.startIndex, bounds.endIndex).split('\n');
 
-	const nonEmptyLines = lines.filter(l => l.trim() !== '');
-	if (!nonEmptyLines.length) return state;
+	const processBlankLines = lines.every(l => l.trim() === '');
 
-	const allLinesAreQuoted = nonEmptyLines.every(l => /^>\s?/.test(l));
+	const linesToProcess = lines.filter(l => l.trim() !== '' || processBlankLines);
+
+	const allLinesAreQuoted = linesToProcess.every(l => /^>\s?/.test(l));
 
 	const newLines = lines.map(line => {
-		if (line.trim() === '') return line;
+		if (line.trim() === '' && !processBlankLines) return line;
+
 		if (allLinesAreQuoted) {
 			// Remove one level of quoting
 			return line.replace(/^>\s?/, '');
@@ -379,10 +445,12 @@ export const toggleBlockquote = (state: TextState): TextState => {
 	const newText = newLines.join('\n');
 	const newValue = value.slice(0, bounds.startIndex) + newText + value.slice(bounds.endIndex);
 
+	const newSelection = computeLineSelection(lines, newLines, bounds, selectionStart, selectionEnd);
+
 	return {
 		value: newValue,
-		selectionStart: bounds.startIndex,
-		selectionEnd: bounds.startIndex + newText.length,
+		selectionStart: newSelection.selectionStart,
+		selectionEnd: newSelection.selectionEnd,
 	};
 };
 
@@ -390,7 +458,9 @@ export const toggleBlockquote = (state: TextState): TextState => {
 // Indentation
 // ----------------------------------------------------------------------------
 
-// Indents the selected lines by one indent unit (4 spaces).
+// Indents the selected lines by one indent unit (4 spaces). The caret (or a
+// selection within one line) stays at its position in the text, so that
+// typing can continue right away.
 export const indentLines = (state: TextState): TextState => {
 	const { value, selectionStart, selectionEnd } = state;
 	const bounds = lineBounds(value, selectionStart, selectionEnd);
@@ -400,15 +470,18 @@ export const indentLines = (state: TextState): TextState => {
 	const newText = newLines.join('\n');
 	const newValue = value.slice(0, bounds.startIndex) + newText + value.slice(bounds.endIndex);
 
+	const newSelection = computeLineSelection(lines, newLines, bounds, selectionStart, selectionEnd);
+
 	return renumberOrderedLists({
 		value: newValue,
-		selectionStart: bounds.startIndex,
-		selectionEnd: bounds.startIndex + newText.length,
+		selectionStart: newSelection.selectionStart,
+		selectionEnd: newSelection.selectionEnd,
 	});
 };
 
 // Unindents the selected lines by one indent unit (removes one tab, or up to 4
-// leading spaces, from each line).
+// leading spaces, from each line). The caret stays at its position in the
+// text.
 export const unindentLines = (state: TextState): TextState => {
 	const { value, selectionStart, selectionEnd } = state;
 	const bounds = lineBounds(value, selectionStart, selectionEnd);
@@ -418,10 +491,12 @@ export const unindentLines = (state: TextState): TextState => {
 	const newText = newLines.join('\n');
 	const newValue = value.slice(0, bounds.startIndex) + newText + value.slice(bounds.endIndex);
 
+	const newSelection = computeLineSelection(lines, newLines, bounds, selectionStart, selectionEnd);
+
 	return renumberOrderedLists({
 		value: newValue,
-		selectionStart: bounds.startIndex,
-		selectionEnd: bounds.startIndex + newText.length,
+		selectionStart: newSelection.selectionStart,
+		selectionEnd: newSelection.selectionEnd,
 	});
 };
 

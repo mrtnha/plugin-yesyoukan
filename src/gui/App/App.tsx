@@ -332,6 +332,7 @@ export default () => {
 			return (
 				<CardDialog
 					mode="add"
+					appSettings={appSettings}
 					onCancel={() => {
 						setCardDialogState(null);
 					}}
@@ -349,6 +350,7 @@ export default () => {
 		return (
 			<CardDialog
 				mode="edit"
+				appSettings={appSettings}
 				initialTitle={card.title}
 				initialDescription={card.body}
 				onCancel={() => {

@@ -295,27 +295,58 @@ button:disabled {
     margin-top: -0.3em;
 }
 
-/* Text area used by the description field of the card dialog */
-.note-editor {
-	height: 10em;
-	width: 100%;
+/* Card dialog editor: the formatting toolbar and the description text area
+form a single box, like the editor of a note. The text area comes first in
+the DOM (so that Tab from the title field moves directly into the text,
+skipping the toolbar buttons), so the flex direction is reversed to place the
+toolbar visually above the text. */
+.card-dialog-editor {
+	display: flex;
+	flex-direction: column-reverse;
+	margin-top: 16px;
 	border: 1px solid var(--joplin-divider-color);
-	line-height: 1.6em;
-	background-color: var(--joplin-background-color);
-	color: var(--joplin-color);
+	border-radius: 4px;
+	overflow: hidden;
 }
 
 /* Focus is indicated by the border color only, like the MUI outlined text
-fields (used for example by the title field of the Add card dialog): the
-native browser focus ring - a white halo with an orange inner ring on dark
+fields (used for example by the title field of the card dialog): the native
+browser focus ring - a white halo with an orange inner ring on dark
 backgrounds - is suppressed, and the border color changes to the app's
 foreground color. The box shadow thickens the ring to match the 2px focus
 border of MUI inputs, without causing any layout shift. */
-.note-editor:focus,
+.card-dialog-editor:focus-within,
 .titleedit:focus {
 	outline: none;
 	border-color: var(--joplin-color);
 	box-shadow: 0 0 0 1px var(--joplin-color);
+}
+
+/* Formatting toolbar of the card dialog */
+.card-dialog-toolbar {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 2px;
+	padding: 4px 6px;
+	border-bottom: 1px solid var(--joplin-divider-color);
+}
+
+/* Description text area of the card dialog, inside the editor box. The focus
+is shown on the editor box itself (see :focus-within above), so the native
+browser focus outline is suppressed here. The area can only be resized
+vertically, never horizontally. */
+.card-dialog-editor > .note-editor {
+	height: 10em;
+	min-height: 6em;
+	width: 100%;
+	border: none;
+	outline: none;
+	resize: vertical;
+	line-height: 1.6em;
+	padding: 8px 10px;
+	background-color: var(--joplin-background-color);
+	color: var(--joplin-color);
 }
 
 .confirm-buttons {

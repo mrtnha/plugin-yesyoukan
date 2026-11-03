@@ -62,7 +62,9 @@ You can toggle at any time between the Kanban board and the underlying note by c
 
 ## Editing cards
 
-Click on a card to open the card editor dialog, where you can edit its title and description. In the description, pressing Enter inserts a newline and Ctrl/Cmd+Enter saves the card, so writing multi-line descriptions never accidentally closes the dialog.
+Click on a card to open the card editor dialog, where you can edit its title and description. The description field has a formatting toolbar with the same actions as Joplin's own editor: bold, italic, hyperlink, code, bulleted list, numbered list, checkbox, indent/unindent, horizontal rule, blockquote, table and time. Pressing Tab indents the current list item and Shift+Tab unindents it, which allows creating subtasks. Pressing Enter inserts a newline, continuing lists automatically, and Ctrl/Cmd+Enter saves the card.
+
+Note that headings are not available in the card editor, because the board format itself is based on headings - bold text can be used for emphasis instead. Attaching files, linking to notes and drawings are not currently supported either.
 
 ## Creating a note from a card
 
