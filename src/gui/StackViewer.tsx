@@ -1,7 +1,7 @@
 import * as React from "react";
 import { useCallback, useState, useRef, useMemo } from "react";
-import { AppSettings, CardDoubleClickAction, ConfirmKey, NewlineKey, Platform, Stack } from "../utils/types";
-import CardViewer, { EditorSubmitHandler as CardEditorSubmitEventHandler, DeleteEventHandler as CardDeleteEventHandler, EditorCancelHandler as CardEditorCancelHandler, EditorStartHandler as CardEditorStartEventHandler, CardHandler } from "./CardViewer";
+import { AppSettings, Platform, Stack } from "../utils/types";
+import CardViewer, { DeleteEventHandler as CardDeleteEventHandler, CardHandler } from "./CardViewer";
 import { Draggable, DraggableProvided, Droppable } from "@hello-pangea/dnd";
 import ConfirmButtons from "./ConfirmButtons";
 import useOnEditorKeyDown from "./hooks/useOnEditorKeyDown";
@@ -37,16 +37,10 @@ export type AddCardEventHandler = (event:AddCardEvent) => void;
 interface Props {
 	value: Stack;
 	index: number;
-	confirmKey: ConfirmKey;
-	newlineKey: NewlineKey;
-	editedCardIds: string[];
 	platform: Platform;
 	isLast: boolean;
 	dynamicWidth: number;
 	showCardBody: boolean;
-	onCardEditorStart: CardEditorStartEventHandler;
-	onCardEditorSubmit: CardEditorSubmitEventHandler;
-	onCardEditorCancel: CardEditorCancelHandler;
 	onScrollToCard: CardHandler;
 	onCreateNoteFromCard: CardHandler;
 	onCreateTodoFromCard: CardHandler;
@@ -54,13 +48,12 @@ interface Props {
 	onEditCardSettings: CardHandler;
 	onTitleChange: TitleChangeEventHandler;
 	onDuplicateCard: CardHandler;
+	onSingleClick: CardHandler;
 	onDelete: StackEventHandler;
 	onEditSettings: StackEventHandler;
 	onAddCard: AddCardEventHandler;
 	onDeleteCard: CardDeleteEventHandler;
 	onDrop: StackDropEventHandler;
-	cardDoubleClickAction: CardDoubleClickAction;
-	cardDoubleClickAltAction: CardDoubleClickAction;
 	appSettings: AppSettings;
 	showCardCounter: boolean;
 }
@@ -193,9 +186,6 @@ export default (props:Props) => {
 		const output:React.JSX.Element[] = [];
 		for (let [index, card] of props.value.cards.entries()) {
 			output.push(<CardViewer
-				onEditorStart={props.onCardEditorStart}
-				onEditorSubmit={props.onCardEditorSubmit}
-				onEditorCancel={props.onCardEditorCancel}
 				onDelete={props.onDeleteCard}
 				onScrollToCard={props.onScrollToCard}
 				onCreateNoteFromCard={props.onCreateNoteFromCard}
@@ -203,17 +193,13 @@ export default (props:Props) => {
 				onOpenAssociatedNote={props.onOpenAssociatedNote}
 				onEditSettings={props.onEditCardSettings}
 				onDuplicate={props.onDuplicateCard}
+				onSingleClick={props.onSingleClick}
 				showCardBody={props.showCardBody}
 				isLast={index === props.value.cards.length - 1}
 				platform={props.platform}
 				index={index}
 				key={card.id}
 				value={card}
-				confirmKey={props.confirmKey}
-				newlineKey={props.newlineKey}
-				isEditing={props.editedCardIds.includes(card.id)}
-				cardDoubleClickAction={props.cardDoubleClickAction}
-				cardDoubleClickAltAction={props.cardDoubleClickAltAction}
 				appSettings={props.appSettings}
 			/>);
 		}

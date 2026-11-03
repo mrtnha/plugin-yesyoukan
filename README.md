@@ -60,11 +60,15 @@ Draft a comprehensive plan outlining business strategy, target market, and finan
 
 You can toggle at any time between the Kanban board and the underlying note by clicking on the "eye" button (<img style="height: 16px;" src="./doc/images/ToggleButton.png"/>) in the top right corner.
 
+## Editing cards
+
+Click on a card to open the card editor dialog, where you can edit its title and description. In the description, pressing Enter inserts a newline and Ctrl/Cmd+Enter saves the card, so writing multi-line descriptions never accidentally closes the dialog.
+
 ## Creating a note from a card
 
 By default the entire board is contained within the same note. That can be convenient if you only have relatively small card and don't need to add much details to them. If certain cards need to be more detailed you can however convert them to actual notes. To do that, click on the card kebab button **⋮** and select **Create note from card**.
 
-This will create a new note in the same notebook as the board and it will be linked to from the Kanban board. Now when you double-click on that card, it will open the note automatically.
+This will create a new note in the same notebook as the board and it will be linked to from the Kanban board. Now when you click on that card, it will open the note automatically.
 
 When you delete this card, the associated note will also be deleted.
 
@@ -73,7 +77,7 @@ When you delete this card, the associated note will also be deleted.
 To associate tags with a card, follow these steps:
 
 - First [create a note from the card](#creating-a-note-from-a-card) if not alread done
-- Double-click on the card to open the note
+- Click on the card to open the note
 - Associate some tags with the note
 
 Now if you open the Kanban board again, the tags will appear on the card.
@@ -83,7 +87,7 @@ Now if you open the Kanban board again, the tags will appear on the card.
 To associate a due date with a card, follow these steps:
 
 - First [create a note from the card](#creating-a-note-from-a-card) if not alread done
-- Double-click on the card to open the note
+- Click on the card to open the note
 - Convert the note to a to-do
 - Associate an alarm with the to-do
 

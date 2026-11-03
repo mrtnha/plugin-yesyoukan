@@ -22,6 +22,17 @@ export const findCard = (board:Board, cardId:string) => {
 	return board.stacks[stackIndex].cards[cardIndex];
 }
 
+// Same as findCard, but returns null instead of throwing an error when the
+// card does not exist.
+export const findCardOrNull = (board:Board, cardId:string) => {
+	for (const [, stack] of board.stacks.entries()) {
+		for (const [, card] of stack.cards.entries()) {
+			if (card.id === cardId) return card;
+		}
+	}
+	return null;
+}
+
 export const findStack = (board:Board, stackId:string) => {
 	const stackIndex = findStackIndex(board, stackId);
 	return board.stacks[stackIndex];

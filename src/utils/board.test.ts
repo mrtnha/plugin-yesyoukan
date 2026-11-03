@@ -1,4 +1,4 @@
-import { getCardTitleAndIndex } from "./board";
+import { findCardOrNull, getCardTitleAndIndex } from "./board";
 import { parseNote, serializeBoard } from "./noteParser";
 import { Board } from "./types";
 
@@ -24,7 +24,6 @@ Content 3 again
 
 \`\`\`kanban-settings
 # Do not remove this block
-confirmKey: Shift+Enter
 stackWidth: 100
 \`\`\`
 `
@@ -48,6 +47,17 @@ describe('board', () => {
 			const card = board.stacks[1].cards[0];
 			expect(getCardTitleAndIndex(board, card.id)).toEqual({ title: 'Post 3', index: 1 });
 		}
+	});
+
+	it('should find a card by id, or return null when it does not exist', async () => {
+		const board = await parseNote('abcd', noteBody1);
+
+		{
+			const card = board.stacks[0].cards[1];
+			expect(findCardOrNull(board, card.id)).toBe(card);
+		}
+
+		expect(findCardOrNull(board, 'does-not-exist')).toBe(null);
 	});
 
 });

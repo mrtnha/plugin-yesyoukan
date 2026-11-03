@@ -2,7 +2,7 @@ import * as React from 'react';
 import { useState } from 'react';
 import {
 	Dialog, DialogTitle, DialogContent, DialogActions, Button,
-	TextField, Checkbox, FormControlLabel, MenuItem,
+	TextField, Checkbox,
 } from '@mui/material';
 import { PluginSettingItems, SettingItems, PluginSettings } from '../../utils/types';
 import ColorPicker from '../ColorPicker';
@@ -88,25 +88,6 @@ const SettingsDialog: React.FC<Props> = (props:Props) => {
 				</div>
 			);
 		} else if (typeof defaultValue === 'string') {
-			if (key === 'confirmKey') {
-				throw new Error('Not implemented: confirmKey');
-
-				// Special case for the "confirmKey" field since it has predefined options
-				return (
-					<div key={key} style={{ display: 'flex', alignItems: 'center', marginBottom: '16px' }}>
-						<TextField
-							select
-							fullWidth
-							label={key}
-							value={currentValue || ''}
-							onChange={(e) => handleChange(key, e.target.value)}
-						>
-							<MenuItem value="Enter">Enter</MenuItem>
-							<MenuItem value="Shift+Enter">Shift+Enter</MenuItem>
-						</TextField>
-					</div>
-				);
-			}
 			return (
 				<GenericControl
 					onReset={() => {}}

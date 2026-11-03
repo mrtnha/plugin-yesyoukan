@@ -124,10 +124,6 @@ export const settingSectionName = 'yesYouKan';
 export type ValidationKey = 'Enter' | 'Shift+Enter' | 'Ctrl+Enter' | 'Cmd+Enter';
 export type ConfirmKey = ValidationKey;
 export type NewlineKey = ValidationKey;
-export enum CardDoubleClickAction {
-	openInBoard = 'openInBoard',
-	openInNote = 'openInNote',
-}
 export enum CardInsertLocation {
 	Top = 'top',
 	Bottom = 'bottom',
@@ -138,11 +134,7 @@ export type LastStackAddedDates = Record<string, Record<string, number>>;
 
 export interface PluginSettings {
 	stackWidth?: number;
-	confirmKey?: ConfirmKey;
-	newlineKey?: NewlineKey;
 	stackDynamicWidth?: boolean;
-	cardDoubleClickAction?: CardDoubleClickAction;
-	cardDoubleClickAltAction?: CardDoubleClickAction;
 	autoArchiveDelayDays?: number;
 	lastStackAddedDates?: LastStackAddedDates;
 	archiveNoteId?: string; // Deprecated in favor of archiveNoteIds
@@ -181,71 +173,12 @@ export const pluginSettingItems:PluginSettingItems = {
 		section: settingSectionName,
 	},
 
-	confirmKey: {
-		label: 'Confirm key',
-		description: 'Press this key to confirm the text you just entered in the card title or body.',
-		type: SettingItemType.String,
-		isEnum: true,
-		public: true,
-		value: 'Enter',
-		options: {
-			'Enter': 'Enter',
-			'Shift+Enter': 'Shift+Enter',
-			'Ctrl+Enter': 'Ctrl+Enter',
-			'Cmd+Enter': 'Cmd+Enter',
-		},
-		section: settingSectionName,
-	},
-
-	newlineKey: {
-		label: 'Newline key',
-		description: 'Press this key to enter a newline in the card body.',
-		type: SettingItemType.String,
-		isEnum: true,
-		public: true,
-		value: 'Shift+Enter',
-		options: {
-			'Enter': 'Enter',
-			'Shift+Enter': 'Shift+Enter',
-			'Ctrl+Enter': 'Ctrl+Enter',
-			'Cmd+Enter': 'Cmd+Enter',
-		},
-		section: settingSectionName,
-	},
-
 	stackDynamicWidth: {
 		label: 'Enable stack dynamic width',
 		description: 'When this is enabled, the width of the stacks is changed dynamically to fit the whole window',
 		type: SettingItemType.Bool,
 		value: false,
 		public: true,
-		section: settingSectionName,
-	},
-
-	cardDoubleClickAction: {
-		label: 'Card double-click action',
-		type: SettingItemType.String,
-		isEnum: true,
-		public: true,
-		value: CardDoubleClickAction.openInBoard,
-		options: {
-			[CardDoubleClickAction.openInBoard]: 'Open in board',
-			[CardDoubleClickAction.openInNote]: 'Open in note',
-		},
-		section: settingSectionName,
-	},
-
-	cardDoubleClickAltAction: {
-		label: 'Card double-click action with modifier key',
-		description: 'Action to perform when double-clicking a card while holding Cmd (macOS) or Ctrl (Windows/Linux)',
-		type: SettingItemType.String,
-		isEnum: true,
-		public: true,
-		value: CardDoubleClickAction.openInNote,
-		options: {
-			[CardDoubleClickAction.openInBoard]: 'Open in board',
-			[CardDoubleClickAction.openInNote]: 'Open in note',
-		},
 		section: settingSectionName,
 	},
 
@@ -357,7 +290,7 @@ export interface RenderResultPluginAsset {
 	mime: string;
 	path: string;
 
-	// For built-in Mardown-it plugins, the asset path is relative (and can be
+	// For built-in Markdown-it plugins, the asset path is relative (and can be
 	// found inside the @joplin/renderer package), while for external plugins
 	// (content scripts), the path is absolute. We use this property to tell if
 	// it's relative or absolute, as that will inform how it's loaded in various

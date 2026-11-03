@@ -38,7 +38,6 @@ Some empty lines above
 
 \`\`\`kanban-settings
 # Do not remove this block
-confirmKey: Shift+Enter
 filters: {"tagIds":["1"]}
 stackWidth: 100
 \`\`\`
@@ -122,7 +121,6 @@ describe('noteParser', () => {
 				],
 				settings: {
 					stackWidth: 100,
-					confirmKey: 'Shift+Enter',
 					filters: { tagIds: ["1"] },
 				}
 			},

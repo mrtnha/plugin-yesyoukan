@@ -1,15 +1,23 @@
 import * as React from 'react';
 import { produce } from "immer";
-import { useCallback, useState } from "react";
-import { EditorSubmitHandler as CardChangeEventHandler, DeleteEventHandler as CardDeleteEventHandler, EditorCancelHandler, EditorStartHandler, CardHandler } from "../../CardViewer";
+import { useCallback } from "react";
+import { DeleteEventHandler as CardDeleteEventHandler, CardEvent, CardHandler } from "../../CardViewer";
 import { Board, Card, CardInsertLocation, cardSettingItems, CardSettings, Note, WebviewApi } from "../../../utils/types";
 import { PushUndo } from "./useHistory";
 import { findCard, findCardIndex, findStackIndex } from "../../../utils/board";
-import uuid from "../../../utils/uuid";
-import { AddCardEventHandler } from "../../../gui/StackViewer";
+import { AddCardEvent } from "../../../gui/StackViewer";
+import { CardDialogData } from "../../../gui/CardDialog";
 import { parseAsNoteLink, serializeNoteToCard } from "../../../utils/noteParser";
 import { DialogConfig } from "../utils/types";
 import { createCard, duplicateCard } from '../../../utils/cards';
+
+export interface CreateCardEvent extends AddCardEvent, CardDialogData {}
+
+export type CreateCardEventHandler = (event:CreateCardEvent) => void;
+
+export interface UpdateCardEvent extends CardEvent, CardDialogData {}
+
+export type UpdateCardEventHandler = (event:UpdateCardEvent) => void;
 
 interface Props {
 	board: Board;
@@ -21,27 +29,6 @@ interface Props {
 }
 
 export default (props:Props) => {
-	const [editedCardIds, setEditedCardIds] = useState<string[]>([]);
-	
-	const startCardEditing = (cardId:string) => {
-		setEditedCardIds(current => {
-			return produce(current, draft => {
-				const index = draft.findIndex(id => id === cardId);
-				if (index >= 0) return;
-				draft.push(cardId);
-			});
-		});
-	}
-
-	const stopCardEditing = (cardId:string) => {
-		setEditedCardIds(current => {
-			return produce(current, draft => {
-				const index = draft.findIndex(id => id === cardId);
-				if (index >= 0) draft.splice(index, 1);
-			});
-		});
-	}
-
 	const insertCardByLocation = (
 		cards: Card[],
 		card: Card,
@@ -54,55 +41,42 @@ export default (props:Props) => {
 		}
 	}
 
-	const onCardEditorStart = useCallback<EditorStartHandler>((event) => {
-		startCardEditing(event.card.id);
-	}, []);
-	
-	const onCardChange = useCallback<CardChangeEventHandler>((event) => {
+	const onUpdateCard = useCallback<UpdateCardEventHandler>((event) => {
+		// The dialog disables the confirm button while the title is empty, but
+		// be defensive in case the handler is called from elsewhere.
+		if (!event.title.trim()) return;
+
 		props.pushUndo(props.board);
 
-		const cardId = event.card.id;
-
 		const newBoard = produce(props.board, draft => {
-			const [stackIndex, cardIndex] = findCardIndex(draft, cardId);
-			const newCard = draft.stacks[stackIndex].cards[cardIndex];
-			newCard.title = event.card.title;
-			newCard.body = event.card.body;
+			const [stackIndex, cardIndex] = findCardIndex(draft, event.cardId);
+			const card = draft.stacks[stackIndex].cards[cardIndex];
+			card.title = event.title.trim();
+			card.body = event.description.trim();
 		});
 
 		props.setBoard(newBoard);
+	}, [props.board, props.setBoard, props.pushUndo]);
 
-		stopCardEditing(cardId);
-	}, [props.board, props.pushUndo]);
+	const onAddCard = useCallback<CreateCardEventHandler>((event) => {
+		// A card without a title cannot be created. The dialog disables the Add
+		// button until the title is non-empty, but be defensive in case the
+		// handler is called from elsewhere.
+		if (!event.title.trim()) return;
 
-	const onCardEditorCancel = useCallback<EditorCancelHandler>((event) => {
-		stopCardEditing(event.card.id);
-	}, []);
-
-	const onAddCard = useCallback<AddCardEventHandler>((event) => {
 		props.pushUndo(props.board);
-
-		const newCardId = uuid();
 
 		const newBoard = produce(props.board, draft => {
 			const stackIndex = findStackIndex(draft, event.stackId);
-			const newCard = {
-				id: newCardId,
-				title: '',
-				body: '',
-				is_todo: 0,
-				todo_completed: 0,
-				todo_due: 0,
-			}
-
-			insertCardByLocation(draft.stacks[stackIndex].cards, newCard, props.cardInsertLocation);
-
+			insertCardByLocation(
+				draft.stacks[stackIndex].cards,
+				createCard(event.title.trim(), event.description.trim()),
+				props.cardInsertLocation
+			);
 		});
 
 		props.setBoard(newBoard);
-
-		startCardEditing(newCardId);
-	}, [props.board, props.setBoard, props.pushUndo]);
+	}, [props.board, props.setBoard, props.pushUndo, props.cardInsertLocation]);
 
 	const onDeleteCard = useCallback<CardDeleteEventHandler>(async (event) => {
 		const card = findCard(props.board, event.cardId);
@@ -144,7 +118,7 @@ export default (props:Props) => {
 			const newBoard = produce(props.board, draft => {
 				const newCard = createCard();
 				insertCardByLocation(
-					draft.stacks[stackIndex].cards, 
+					draft.stacks[stackIndex].cards,
 					{
 						...newCard,
 						...serializeNoteToCard(newNote),
@@ -162,7 +136,7 @@ export default (props:Props) => {
 					duplicateCard(card),
 					props.cardInsertLocation);
 			});
-	
+
 			props.setBoard(newBoard);
 		}
 	}, [props.board, props.pushUndo, props.setBoard, props.webviewApi]);
@@ -184,12 +158,9 @@ export default (props:Props) => {
 	}, [props.board, props.setBoard, props.setDialogConfig]);
 
 	return {
-		editedCardIds,
-		onCardEditorStart,
-		onCardChange,
+		onUpdateCard,
 		onEditCardSettings,
 		onDeleteCard,
-		onCardEditorCancel,
 		onAddCard,
 		onDuplicateCard,
 	};

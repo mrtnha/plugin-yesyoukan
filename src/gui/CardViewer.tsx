@@ -1,29 +1,16 @@
 import * as React from "react";
 import { Draggable } from "@hello-pangea/dnd";
-import { useCallback, useRef, useEffect, useMemo } from "react";
-import { AppSettings, Card, CardDoubleClickAction, ConfirmKey, NewlineKey, Platform } from "../utils/types";
-import ConfirmButtons from "./ConfirmButtons";
-import useOnEditorKeyDown from "./hooks/useOnEditorKeyDown";
+import { useCallback, useMemo } from "react";
+import { AppSettings, Card, Platform } from "../utils/types";
 import KebabButton, { ItemClickEventHandler, MenuItem } from "./KebabButton";
-import moveCaretToEnd from "../utils/moveCaretToEnd";
-import Logger from "@joplin/utils/Logger";
 import { parseAsNoteLink } from "../utils/noteParser";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { formatDateTime } from "../utils/time";
-
-const logger = Logger.create('YesYouKan: CardViewer');
-
-export interface ChangeEvent {
-	card: Card;
-}
 
 export interface CardEvent {
 	cardId: string;
 }
 
-export type EditorStartHandler = (event:ChangeEvent) => void;
-export type EditorSubmitHandler = (event:ChangeEvent) => void;
-export type EditorCancelHandler = (event:ChangeEvent) => void;
 export type CardHandler = (event:CardEvent) => void;
 
 export interface DeleteEvent {
@@ -32,17 +19,11 @@ export interface DeleteEvent {
 
 export type DeleteEventHandler = (event:DeleteEvent) => void;
 
-export interface Props {
-	key:string;
+interface Props {
 	value: Card;
 	appSettings: AppSettings;
 	index: number;
 	isLast: boolean;
-	confirmKey: ConfirmKey;
-	newlineKey: NewlineKey;
-	onEditorStart:EditorStartHandler;
-	onEditorSubmit:EditorSubmitHandler;
-	onEditorCancel: EditorCancelHandler;
 	onDelete: DeleteEventHandler;
 	onScrollToCard: CardHandler;
 	onCreateNoteFromCard: CardHandler;
@@ -50,35 +31,13 @@ export interface Props {
 	onOpenAssociatedNote: CardHandler;
 	onEditSettings: CardHandler;
 	onDuplicate: CardHandler;
-	cardDoubleClickAction: CardDoubleClickAction;
-	cardDoubleClickAltAction: CardDoubleClickAction;
+	onSingleClick: CardHandler;
 	showCardBody: boolean;
-	isEditing: boolean;
 	platform: Platform;
-}
-
-const stringToCard = (originalCard:Card, newContent:string):Card => {
-	const lines = newContent.trim().split('\n');
-	let title = '';
-	let body = '';
-	if (lines.length) {
-		title = lines.splice(0, 1)[0];
-		body = lines.join('\n').trim();
-	}
-
-	if (!title.trim()) title = 'Untitled';
-
-	return {
-		...originalCard,
-		title,
-		body,
-	}
 }
 
 export default (props:Props) => {
 	const card = props.value;
-
-	const editorRef = useRef<HTMLTextAreaElement>(null);
 
 	const parsedTitle = useMemo(() => {
 		return parseAsNoteLink(card.title);
@@ -90,93 +49,55 @@ export default (props:Props) => {
 	const hasDueDate = card.is_todo && card.todo_due;
 	const isOverdue = hasDueDate && !card.todo_completed && card.todo_due <= Date.now();
 
-	const cardHasChanged = useCallback(() => {
-		const newCard = stringToCard(card, editorRef.current.value);
-		return newCard.title !== card.title || newCard.body !== card.body;
-	}, [editorRef, card]);
-
-	const onEditorSubmit = useCallback(() => {
-		props.onEditorSubmit({
-			card: stringToCard(card, editorRef.current.value),
-		});
-	}, [props.onEditorSubmit, card]);
-
-	const onEditorCancel = useCallback(() => {
-		const ok = cardHasChanged() ? confirm('All your changes will be lost - continue?') : true;
-		if (!ok) {
-			return;
+	const openLinkedNote = useCallback(() => {
+		if (isInTrash) {
+			alert('This card has been deleted - move it outside of the trash to open it from here');
 		} else {
-			props.onEditorCancel({ card })
+			props.onOpenAssociatedNote({ cardId: card.id });
 		}
-	}, [cardHasChanged, props.onEditorCancel, card]);
+	}, [isInTrash, props.onOpenAssociatedNote, card.id]);
 
-	const onEdit = useCallback((cardDoubleClickAction:CardDoubleClickAction) => {
-		if (!props.isEditing) {
-			if (isNoteLink) {
-				if (isInTrash) {
-					alert('This card has been deleted - move it outside of the trash to open it from here');
-				} else {
-					props.onOpenAssociatedNote({ cardId: card.id });
-				}
-			} else {
-				const actions:Record<CardDoubleClickAction, () => void> = {
-					[CardDoubleClickAction.openInBoard]: () => {
-						props.onEditorStart({ card });
-					},
-					[CardDoubleClickAction.openInNote]: () => {
-						props.onScrollToCard({ cardId: card.id });
-					},
-				}
-				
-				actions[cardDoubleClickAction ? cardDoubleClickAction : props.cardDoubleClickAction]();
-			}
-		}
-	}, [props.isEditing, card, isNoteLink, props.cardDoubleClickAction, props.onOpenAssociatedNote, isInTrash]);
-
-	const onDoubleClick:React.MouseEventHandler = useCallback((event) => {
-		const action = event.ctrlKey || event.metaKey ? props.cardDoubleClickAltAction : props.cardDoubleClickAction;
-		onEdit(action);
-	}, [onEdit]);
-
-	useEffect(() => {
-		if (props.isEditing) {
-			requestAnimationFrame(() => {
-				editorRef.current.focus();
-				moveCaretToEnd(editorRef.current);
-			});
-		}
-	}, [props.isEditing]);
-
-	const onEditorKeyDown = useOnEditorKeyDown({
-		onEditorSubmit,
-		onEditorCancel,
-		confirmKey: props.confirmKey,
-		newlineKey: props.newlineKey,
-		tabKeyEnabled: true,
-	});
-
-	const onSaveAndScrollToCard = useCallback(() => {
-		if (props.isEditing) {
-			// First save, otherwise the changes will be lost. And we need a delay to give time to
-			// the IPC call to save the note.
-			onEditorSubmit();
-			setTimeout(() => {
-				props.onScrollToCard({ cardId: card.id });
-			}, 1000);
+	const openCard = useCallback(() => {
+		if (isNoteLink) {
+			// Cards linked to a note are edited in the note itself.
+			openLinkedNote();
 		} else {
-			props.onScrollToCard({ cardId: card.id });
+			props.onSingleClick({ cardId: card.id });
 		}
-	}, [card.id, onEditorSubmit, props.isEditing, props.onScrollToCard]);
+	}, [isNoteLink, openLinkedNote, props.onSingleClick, card.id]);
+
+	const onCardClick = useCallback<React.MouseEventHandler>((event) => {
+		// The drag and drop library blocks the click that follows a drag.
+		if (event.defaultPrevented) return;
+
+		// The kebab menu is rendered in a portal: its DOM lives outside the
+		// card, but it is part of the card's React tree, so clicks on its
+		// items propagate to this handler through the React tree. Only handle
+		// clicks that physically happen inside the card element.
+		const cardElement = event.currentTarget as HTMLElement;
+		const target = event.target as HTMLElement;
+		if (!cardElement.contains(target)) return;
+
+		// Ignore clicks on interactive elements (links, checkboxes, the kebab
+		// menu button, etc.) - they handle their own clicks.
+		if (target.closest('a, button, input, textarea, select')) return;
+
+		// Ignore clicks that end a text selection - the user is selecting text
+		// to copy it, not opening the card.
+		if (window.getSelection()?.toString()) return;
+
+		openCard();
+	}, [openCard]);
 
 	const onKebabItemClick = useCallback<ItemClickEventHandler>((event) => {
 		if (event.itemId === 'edit') {
-			onEdit(CardDoubleClickAction.openInBoard);
+			openCard();
 		} else if (event.itemId === 'delete') {
 			props.onDelete({ cardId: card.id });
 		} else if (event.itemId === 'duplicate') {
 			props.onDuplicate({ cardId: card.id });
 		} else if (event.itemId === 'scrollToCard') {
-			onSaveAndScrollToCard();
+			props.onScrollToCard({ cardId: card.id });
 		} else if (event.itemId === 'createNoteFromCard') {
 			props.onCreateNoteFromCard({ cardId: card.id });
 		} else if (event.itemId === 'createTodoFromCard') {
@@ -186,7 +107,7 @@ export default (props:Props) => {
 		} else {
 			throw new Error('Unknown item ID: ' + event.itemId);
 		}
-	}, [onDoubleClick, props.onDelete, card.id, onSaveAndScrollToCard]);
+	}, [openCard, props.onDelete, props.onDuplicate, props.onScrollToCard, props.onCreateNoteFromCard, props.onCreateTodoFromCard, props.onEditSettings, card.id]);
 
 	const renderKebabButton = () => {
 		const menuItems:MenuItem[] = [];
@@ -282,42 +203,17 @@ export default (props:Props) => {
 		);
 	}
 
-	const renderText = (card:Card) => {
-		const output = [card.title];
-		if (card.body) output.push(card.body);
-		return output.join('\n\n');
-	}
-
 	const renderContent = () => {
-		const showCardBody = props.showCardBody;
-
-		if (!props.isEditing) {
-			return (
-				<div className="content">
-					<div className="header">
-						<h3 className="title" dangerouslySetInnerHTML={{ __html: card.titleHtml} }></h3>{renderKebabButton()}
-					</div>
-					{renderTags()}
-					{renderDueDate()}
-					<p className="body" dangerouslySetInnerHTML={{ __html: showCardBody ? card.bodyHtml : '' }}></p>
+		return (
+			<div className="content">
+				<div className="header">
+					<h3 className="title" dangerouslySetInnerHTML={{ __html: card.titleHtml} }></h3>{renderKebabButton()}
 				</div>
-			);
-		} else { // EDIT
-			return (
-				<div className="content -editing">
-					<div className="editor">
-						<textarea
-							ref={editorRef}
-							className="note-editor"
-							onKeyDown={onEditorKeyDown}
-							defaultValue={renderText(card)}
-						></textarea>
-						<ConfirmButtons onConfirm={onEditorSubmit} onCancel={onEditorCancel} />
-					</div>
-					{renderKebabButton()}
-				</div>
-			);
-		}
+				{renderTags()}
+				{renderDueDate()}
+				<p className="body" dangerouslySetInnerHTML={{ __html: props.showCardBody ? card.bodyHtml : '' }}></p>
+			</div>
+		);
 	}
 
 	const cardClasses = useMemo(() => {
@@ -328,12 +224,11 @@ export default (props:Props) => {
 		}
 
 		if (props.isLast) classes.push('-last');
-		if (props.isEditing) classes.push('-editing');
 		if (isInTrash || isPermanentlyDeleted) classes.push('-deleted');
 		if (isOverdue) classes.push('-overdue');
 
 		return classes;
-	}, [card.settings?.backgroundColor, props.isLast, props.isEditing, isInTrash, isPermanentlyDeleted, isOverdue]);
+	}, [card.settings?.backgroundColor, props.isLast, isInTrash, isPermanentlyDeleted, isOverdue]);
 	
 	return (
 		<Draggable draggableId={card.id} index={props.index}>
@@ -341,7 +236,7 @@ export default (props:Props) => {
 				let classes = cardClasses;
 				if (snapshot.isDragging) classes.slice().push('-dragging');
 				return (
-					<div className={classes.join(' ')} {...provided.draggableProps} {...provided.dragHandleProps} ref={provided.innerRef} onDoubleClick={onDoubleClick}>
+					<div className={classes.join(' ')} {...provided.draggableProps} {...provided.dragHandleProps} ref={provided.innerRef} onClick={onCardClick}>
 						{renderContent()}
 					</div>
 				);

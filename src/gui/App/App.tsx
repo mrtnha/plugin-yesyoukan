@@ -1,12 +1,14 @@
 import * as React from "react";
 import { useCallback, useState, useMemo, useRef, useEffect } from "react";
 import { Board, Filters, Note, WebviewApi, emptyBoard, getDefaultFilters } from "../../utils/types";
-import StackViewer, { StackDropEventHandler, StackEvent, StackEventHandler } from "../StackViewer";
+import StackViewer, { AddCardEventHandler, StackDropEventHandler, StackEvent, StackEventHandler } from "../StackViewer";
+import { CardHandler } from "../CardViewer";
 import { DragDropContext, Droppable, OnDragEndResponder } from "@hello-pangea/dnd";
 import { ThemeProvider } from "@mui/material";
 import Toolbar from '../Toolbar';
 import setupFontAwesome from "../../utils/setupFontAwesome";
 import SettingsDialog from "../config/Dialog";
+import CardDialog, { CardDialogData } from "../CardDialog";
 import { darkBackgroundColors, lightBackgroundColors } from "../../utils/colors";
 import getTheme from "./utils/getTheme";
 import useHistory from "./hooks/useHistory";
@@ -31,6 +33,7 @@ import useAppSettings from "./hooks/useAppSettings";
 import FilterDialog from "../filter/Dialog";
 import useCardTags from "./hooks/useCardTags";
 import { applyFilters } from "../../utils/filters";
+import { findCardOrNull } from "../../utils/board";
 import { produce } from "immer";
 import useContextMenu from "./hooks/useContextMenu";
 import useHandleLastStackDrop from "./hooks/useHandleLastStackDrop";
@@ -41,11 +44,14 @@ setupFontAwesome();
 
 const theme = getTheme();
 
+type CardDialogState = { type: 'add', stackId: string } | { type: 'edit', cardId: string };
+
 export default () => {
 	const [board, setBoard] = useState<Board>(emptyBoard());
 	const afterSetNoteAction = useRef<AfterSetNoteAction|null>(null);
 	const [dialogConfig, setDialogConfig] = useState<DialogConfig|null>(null);
 	const [filterDialogShown, setFilterDialogShown] = useState(false);
+	const [cardDialogState, setCardDialogState] = useState<CardDialogState|null>(null);
 	
 	const { board: filteredBoard, totalCardCount: filterTotalCardCount, visibleCardCount: filterVisibleCardCount } = useMemo(() => {
 		return applyFilters(board);
@@ -112,12 +118,9 @@ export default () => {
 	}, [pluginAssets, pluginAssetDir]);
 
 	const {
-		editedCardIds,
-		onCardEditorStart,
-		onCardChange,
+		onUpdateCard,
 		onEditCardSettings,
 		onDeleteCard,
-		onCardEditorCancel,
 		onAddCard,
 		onDuplicateCard,
 	} = useCardHandler({
@@ -209,6 +212,14 @@ export default () => {
 		setFilterDialogShown(true);
 	}, []);
 
+	const onAddCardRequested = useCallback<AddCardEventHandler>((event) => {
+		setCardDialogState({ type: 'add', stackId: event.stackId });
+	}, []);
+
+	const onCardSingleClick = useCallback<CardHandler>((event) => {
+		setCardDialogState({ type: 'edit', cardId: event.cardId });
+	}, []);
+
 	const toolbarButtons = useToolbarButtons({
 		historyRedoLength: history.redo.length,
 		historyUndoLength: history.undo.length,
@@ -232,6 +243,15 @@ export default () => {
 
 	const appSettings = useAppSettings({ webviewApi });
 
+	// If the card being edited disappears while the edit dialog is open (e.g.
+	// the board was updated while the dialog was shown), close the dialog.
+	useEffect(() => {
+		if (!cardDialogState || cardDialogState.type !== 'edit') return;
+		if (!findCardOrNull(board, cardDialogState.cardId)) {
+			setCardDialogState(null);
+		}
+	}, [board, cardDialogState]);
+
 	const renderStacks = () => {
 		const dynamicWidth = effectiveBoardSettings.stackDynamicWidth ? board.stacks.length : 0;
 
@@ -240,17 +260,15 @@ export default () => {
 			output.push(<StackViewer
 				onDelete={onStackDelete}
 				onTitleChange={onStackTitleChange}
-				onCardEditorStart={onCardEditorStart}
-				onCardEditorSubmit={onCardChange}
-				onCardEditorCancel={onCardEditorCancel}
 				onScrollToCard={onScrollToCard}
 				onCreateNoteFromCard={onCreateNoteFromCard}
 				onCreateTodoFromCard={onCreateTodoFromCard}
 				onOpenAssociatedNote={onOpenAssociatedNote}
 				onEditCardSettings={onEditCardSettings}
-				onAddCard={onAddCard}
+				onAddCard={onAddCardRequested}
 				onDeleteCard={onDeleteCard}
 				onDuplicateCard={onDuplicateCard}
+				onSingleClick={onCardSingleClick}
 				onEditSettings={onEditStackSettings}
 				showCardBody={effectiveBoardSettings.showCardBody}
 				onDrop={onStackDrop}
@@ -261,11 +279,6 @@ export default () => {
 				value={stack}
 				platform={platform}
 				index={index}
-				confirmKey={effectiveBoardSettings.confirmKey}
-				newlineKey={effectiveBoardSettings.newlineKey}
-				editedCardIds={editedCardIds}
-				cardDoubleClickAction={effectiveBoardSettings.cardDoubleClickAction}
-				cardDoubleClickAltAction={effectiveBoardSettings.cardDoubleClickAltAction}
 				showCardCounter={effectiveBoardSettings.showCardCounter}
 			/>);
 		}
@@ -312,12 +325,50 @@ export default () => {
 		);
 	}
 
+	const renderCardDialog = () => {
+		if (!cardDialogState) return null;
+
+		if (cardDialogState.type === 'add') {
+			return (
+				<CardDialog
+					mode="add"
+					onCancel={() => {
+						setCardDialogState(null);
+					}}
+					onConfirm={(data:CardDialogData) => {
+						onAddCard({ stackId: cardDialogState.stackId, ...data });
+						setCardDialogState(null);
+					}}
+				/>
+			);
+		}
+
+		const card = findCardOrNull(board, cardDialogState.cardId);
+		if (!card) return null;
+
+		return (
+			<CardDialog
+				mode="edit"
+				initialTitle={card.title}
+				initialDescription={card.body}
+				onCancel={() => {
+					setCardDialogState(null);
+				}}
+				onConfirm={(data:CardDialogData) => {
+					onUpdateCard({ cardId: cardDialogState.cardId, ...data });
+					setCardDialogState(null);
+				}}
+			/>
+		);
+	}
+
 	return (
 		<ThemeProvider theme={theme}>
 			<div className="app">
 				<style>{appStyle}</style>
 				{renderSettingsDialog()}
 				{renderFilterDialog()}
+				{renderCardDialog()}
 				<Toolbar buttons={toolbarButtons}/>
 				<div className="stacks">
 					<DragDropContext onDragEnd={onDragEnd}>

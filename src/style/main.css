@@ -271,29 +271,6 @@ ul, ol {
 				margin-bottom: 10px;
 			}
 		}		
-
-		> .editor {
-			display: flex;
-			flex: 1;
-			flex-direction: column;
-
-			> .note-editor {
-				height: 10em;
-				width: 100%;
-				border: 1px solid var(--joplin-divider-color);
-				line-height: 1.6em;
-				background-color: var(--joplin-background-color);
-				color: var(--joplin-color);
-			}
-		}
-
-		&.-editing {
-			flex-direction: row;
-		}
-	}
-
-	&.-editing {
-		padding-bottom: 5px;
 	}
 
 	&.-deleted {
@@ -316,6 +293,29 @@ button:disabled {
 .kebab-button-wrapper {
 	margin-right: -0.6em;
     margin-top: -0.3em;
+}
+
+/* Text area used by the description field of the card dialog */
+.note-editor {
+	height: 10em;
+	width: 100%;
+	border: 1px solid var(--joplin-divider-color);
+	line-height: 1.6em;
+	background-color: var(--joplin-background-color);
+	color: var(--joplin-color);
+}
+
+/* Focus is indicated by the border color only, like the MUI outlined text
+fields (used for example by the title field of the Add card dialog): the
+native browser focus ring - a white halo with an orange inner ring on dark
+backgrounds - is suppressed, and the border color changes to the app's
+foreground color. The box shadow thickens the ring to match the 2px focus
+border of MUI inputs, without causing any layout shift. */
+.note-editor:focus,
+.titleedit:focus {
+	outline: none;
+	border-color: var(--joplin-color);
+	box-shadow: 0 0 0 1px var(--joplin-color);
 }
 
 .confirm-buttons {
