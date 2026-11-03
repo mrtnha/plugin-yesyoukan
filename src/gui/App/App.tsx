@@ -146,6 +146,7 @@ export default () => {
 
 	useRendererEvents({
 		webviewApi,
+		board,
 		setBoard,
 	});
 

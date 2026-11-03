@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Board, IpcMessage, WebviewApi } from "../../../utils/types";
 import { produce } from "immer";
-import { findCardIndex } from "../../../utils/board";
+import { findCardOrNull } from "../../../utils/board";
 import { toggleCheckbox } from "../../../utils/renderMarkupUtils";
 import { parseAsNoteLink } from "../../../utils/noteParser";
 
@@ -11,15 +11,53 @@ const isSupportedUrl = (text:string) => {
 	return !!text.match(/^[a-zA-Z\-]+:.+/);
 }
 
+interface NoteCheckboxToUpdate {
+	cardMessage: string;
+	noteId: string;
+}
+
 interface Props {
 	webviewApi: WebviewApi;
+	board: Board;
 	setBoard: (value: React.SetStateAction<Board>) => void;
 }
 
 export default (props:Props) => {
-	const [noteCheckboxToUpdate, setNoteCheckboxToUpdate] = useState(null);
+	const [noteCheckboxToUpdate, setNoteCheckboxToUpdate] = useState<NoteCheckboxToUpdate|null>(null);
 
 	useEffect(() => {
+		const handleCheckboxClick = (cardId:string, cardMessage:string) => {
+			// A checkbox belongs either to the body of a plain card - which is
+			// part of the board note - or to the note a card is linked to:
+			// such a card shows the note's content, so its checkbox is toggled
+			// in the note itself.
+			//
+			// The card is looked up before the board is updated: the rendered
+			// body that received the click can be stale while the board is
+			// being updated, and the card may already be gone.
+			const card = findCardOrNull(props.board, cardId);
+			if (!card) {
+				console.warn('Checkbox click on a card that does not exist:', cardId);
+				return;
+			}
+
+			const linkedNote = parseAsNoteLink(card.title);
+			if (linkedNote) {
+				setNoteCheckboxToUpdate({ cardMessage, noteId: linkedNote.id });
+				return;
+			}
+
+			// The body is read from the up-to-date board inside the updater,
+			// so that two clicks in quick succession toggle the checkbox
+			// twice. findCardOrNull is used again for the rare case where the
+			// card is gone by the time the update is applied.
+			props.setBoard(current => produce(current, draft => {
+				const card = findCardOrNull(draft, cardId);
+				if (!card) return;
+				card.body = toggleCheckbox(cardMessage, card.body);
+			}));
+		}
+
 		const handleUrl = async (message:string) => {
 			if (isSupportedUrl(message)) {
 				await props.webviewApi.postMessage<string>({ type: 'openItem', value: message });
@@ -43,18 +81,7 @@ export default (props:Props) => {
 					const cardMessage = asIpcMessage.value.message as string;
 
 					if (cardMessage.startsWith('checkboxclick:')) {
-						props.setBoard(current => produce(current, draft => {
-							const [stackIndex, cardIndex] = findCardIndex(current, cardId);
-							const card = current.stacks[stackIndex].cards[cardIndex];
-							const linkedNote = parseAsNoteLink(card.title);
-							if (linkedNote) {
-								setNoteCheckboxToUpdate({ cardMessage, noteId: linkedNote.id });
-							} else {
-								const cardBody = current.stacks[stackIndex].cards[cardIndex].body;
-								const newBody = toggleCheckbox(cardMessage, cardBody);
-								draft.stacks[stackIndex].cards[cardIndex].body = newBody;
-							}
-						}));
+						handleCheckboxClick(cardId, cardMessage);
 					} else {
 						await handleUrl(cardMessage);
 					}
@@ -63,26 +90,32 @@ export default (props:Props) => {
 		}
 
 		window.addEventListener("message", onMessage);
-		
+
 		return () => {
 			window.removeEventListener('message', onMessage);
 		}
-	}, [props.webviewApi, props.setBoard]);
+	}, [props.webviewApi, props.board, props.setBoard]);
 
 	useEffect(() => {
 		if (!noteCheckboxToUpdate) return;
 
 		const fn = async () => {
-			await props.webviewApi.postMessage({
-				type: 'setNoteCheckbox',
-				value: noteCheckboxToUpdate,
-			});
+			try {
+				await props.webviewApi.postMessage({
+					type: 'setNoteCheckbox',
+					value: noteCheckboxToUpdate,
+				});
+			} catch (error) {
+				// For example when the note has been deleted since the card
+				// body was rendered.
+				console.warn('Could not toggle checkbox in note ' + noteCheckboxToUpdate.noteId + ':', error);
+			}
 
 			setNoteCheckboxToUpdate(null);
 		}
 
 		void fn();
-	}, [noteCheckboxToUpdate]);
+	}, [noteCheckboxToUpdate, props.webviewApi]);
 
 	useEffect(() => {
 		// "cardPostMessage" is defined when calling the `renderMarkup` command. The checkbox
@@ -106,9 +139,9 @@ export default (props:Props) => {
 				};
 			}
 		`;
-			
+
 		document.body.appendChild(script);
-		
+
 		return () => {
 			document.body.removeChild(script);
 		}
