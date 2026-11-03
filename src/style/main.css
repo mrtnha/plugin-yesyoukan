@@ -261,6 +261,16 @@ ul, ol {
 					margin-bottom: 0;
 				}
 			}
+
+			/* The header of a colored card: the strip spans the whole card -
+			the margins cancel the card's padding, and the card's own
+			overflow: hidden clips it to the rounded corners. The padding
+			restores the position of the title and the kebab button, and
+			leaves some air below the title inside the strip. */
+			&.-colored {
+				margin: -1em -1em 0.6em -1em;
+				padding: 1em 1em 0.6em 1em;
+			}
 		}
 
 		> .body {

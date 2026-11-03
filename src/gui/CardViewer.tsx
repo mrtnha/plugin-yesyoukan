@@ -206,7 +206,7 @@ export default (props:Props) => {
 	const renderContent = () => {
 		return (
 			<div className="content">
-				<div className="header">
+				<div className={headerClasses.join(' ')}>
 					<h3 className="title" dangerouslySetInnerHTML={{ __html: card.titleHtml} }></h3>{renderKebabButton()}
 				</div>
 				{renderTags()}
@@ -216,10 +216,31 @@ export default (props:Props) => {
 		);
 	}
 
+	// The color is applied to the header only - the title area - when the
+	// card shows a body: tags, due date and body then stay on the card
+	// background, so a colored card still reads as a card and not as a
+	// colored block. A card that shows no body at all is colored as a
+	// whole: it is just a title, so it reads as a colored label, and the
+	// empty space below the title (the body paragraph is always rendered,
+	// even when empty) is colored too instead of sticking out below the
+	// strip. The strip spans the whole card - see the -colored rule of
+	// .header in main.css.
+	const showsBody = props.showCardBody && !!card.body && !!card.body.trim();
+
+	const headerClasses = useMemo(() => {
+		const classes = ['header'];
+
+		if (card.settings?.backgroundColor && showsBody) {
+			classes.push('-colored', 'background-' + card.settings.backgroundColor);
+		}
+
+		return classes;
+	}, [card.settings?.backgroundColor, showsBody]);
+
 	const cardClasses = useMemo(() => {
 		const classes = ['card'];
 
-		if (card.settings?.backgroundColor) {
+		if (card.settings?.backgroundColor && !showsBody) {
 			classes.push('background-' + card.settings.backgroundColor);
 		}
 
@@ -228,13 +249,12 @@ export default (props:Props) => {
 		if (isOverdue) classes.push('-overdue');
 
 		return classes;
-	}, [card.settings?.backgroundColor, props.isLast, isInTrash, isPermanentlyDeleted, isOverdue]);
+	}, [card.settings?.backgroundColor, showsBody, props.isLast, isInTrash, isPermanentlyDeleted, isOverdue]);
 	
 	return (
 		<Draggable draggableId={card.id} index={props.index}>
-			{(provided, snapshot) => {
-				let classes = cardClasses;
-				if (snapshot.isDragging) classes.slice().push('-dragging');
+			{(provided) => {
+				const classes = cardClasses;
 				return (
 					<div className={classes.join(' ')} {...provided.draggableProps} {...provided.dragHandleProps} ref={provided.innerRef} onClick={onCardClick}>
 						{renderContent()}

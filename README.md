@@ -103,6 +103,8 @@ Now if you open the Kanban board again, the card will diplay the due date and ti
 
 Cards and stacks can have a colour associated with them. For a card, the quickest way to assign the colour is the swatch row at the bottom of the card editor dialog; it can also be done, like for a stack, by clicking on the kebab button **⋮** of the card or stack, selecting **Properties...** and picking the colour there. Note that the colours are predefined so that they look bright enough on a light theme, and dark enough on a dark theme.
 
+On the board, the colour of a card is applied to the area of the title: the body of the card stays on the background of the board, so its content remains easy to read. A card that shows no body - just a title - is coloured as a whole. Stacks are coloured as a whole as well.
+
 The palette is ordered so that it can also be used as a priority scale: green (low / done), yellow, orange, red (urgent), followed by pink, purple and the remaining colours. The colours are deliberately vivid so that each is immediately recognizable, while staying readable: the card text keeps at least a 4.5:1 contrast (WCAG AA) on every colour, in both themes.
 
 If you switch to this fork from the official plugin: the colour palette was reordered and redefined, and colours are stored in the note by their index in the palette - boards created with the official plugin will therefore show shifted colours (and no colour at all for the ones that were dropped). Simply re-assign the colours once after switching.
