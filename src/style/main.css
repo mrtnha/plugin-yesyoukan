@@ -199,11 +199,19 @@ ul, ol {
 }
 
 .card {
+	/* The card is built from one distance: the height of the header
+	row. It absorbs the space that the card's own top padding used to
+	provide - the title is centered inside it by the browser
+	(align-items: center) - so the colored area of every card is
+	exactly the header, and cards with and without a description,
+	colored and plain, are the same height by construction. */
+	--card-padding: 1em;
+	--card-header-height: 3em;
+
 	display: flex;
 	flex-direction: column;
 	margin: 0 10px 10px 10px;
-	padding: 1em;
-	padding-bottom: 0.2em;
+	padding: 0 var(--card-padding) 0.2em var(--card-padding);
 	background-color: var(--joplin-background-color);
 	border: 1px solid var(--joplin-divider-color);
 	border-radius: 8px;
@@ -256,6 +264,16 @@ ul, ol {
 			display: flex;
 			flex-direction: row;
 
+			/* The header has a known height and centers its content: the
+			title is vertically centered by the browser, and nothing
+			below the title is tuned - the description follows directly.
+			The header also never gives way under .content's height cap:
+			the body can shrink to nothing (overflow-y: auto), the header
+			must not. */
+			align-items: center;
+			min-height: var(--card-header-height);
+			flex-shrink: 0;
+
 			> .title {
 				display: flex;
 				flex: 1;
@@ -271,14 +289,16 @@ ul, ol {
 				}
 			}
 
-			/* The header of a colored card: the strip spans the whole card -
-			the margins cancel the card's padding, and the card's own
-			overflow: hidden clips it to the rounded corners. The padding
-			restores the position of the title and the kebab button, and
-			leaves some air below the title inside the strip. */
+			/* The header of a colored card: the strip is just the header
+			with its color. It starts at the card's top edge by itself -
+			the card has no top padding - and reaches the side edges by
+			cancelling the card's side padding, restoring the position
+			of the title and the kebab button with its own. The
+			description follows directly under the strip: the gap was
+			taken away from the description, not from the header. */
 			&.-colored {
-				margin: -1em -1em 0.6em -1em;
-				padding: 1em 1em 0.6em 1em;
+				margin: 0 calc(var(--card-padding) * -1);
+				padding: 0 var(--card-padding);
 			}
 		}
 
@@ -290,6 +310,31 @@ ul, ol {
 				margin-bottom: 10px;
 			}
 		}		
+	}
+
+	/* A card that shows no body is just its header: with no padding,
+	the header fills the card from edge to edge, so a colored card is
+	exactly the strip of the same card with a description - plus the
+	border, and nothing else. Tags and a due date keep the horizontal
+	padding and the bottom spacing that the card's own padding used
+	to give them. */
+	&.-no-body {
+		padding: 0;
+
+		> .content > .header {
+			padding: 0 var(--card-padding);
+		}
+
+		> .content > .tags,
+		> .content > .duedate {
+			padding-left: var(--card-padding);
+			padding-right: var(--card-padding);
+		}
+
+		> .content > .tags:last-child,
+		> .content > .duedate:last-child {
+			margin-bottom: 0.2em;
+		}
 	}
 
 	&.-deleted {
@@ -309,9 +354,11 @@ button:disabled {
 	opacity: 0.5;
 }
 
+/* The kebab button is vertically centered by the header row
+(align-items: center); only its pull towards the card's right edge
+remains. */
 .kebab-button-wrapper {
 	margin-right: -0.6em;
-    margin-top: -0.3em;
 }
 
 /* Card dialog editor: the formatting toolbar and the description text area

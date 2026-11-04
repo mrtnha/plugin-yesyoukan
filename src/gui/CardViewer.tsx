@@ -211,20 +211,26 @@ export default (props:Props) => {
 				</div>
 				{renderTags()}
 				{renderDueDate()}
-				<p className="body" dangerouslySetInnerHTML={{ __html: props.showCardBody ? card.bodyHtml : '' }}></p>
+				{/* The body paragraph is rendered only when there is a body
+				to show: whatever the renderer produces for an empty body -
+				an empty paragraph carrying the bottom margin of .body p
+				inside the body's scroll container, for instance - would add
+				invisible height below the title of a card without a
+				description, and its colored card would end lower than the
+				colored strip of the same card with a description. */}
+				{showsBody ? <p className="body" dangerouslySetInnerHTML={{ __html: card.bodyHtml }}></p> : null}
 			</div>
 		);
 	}
 
-	// The color is applied to the header only - the title area - when the
-	// card shows a body: tags, due date and body then stay on the card
-	// background, so a colored card still reads as a card and not as a
-	// colored block. A card that shows no body at all is colored as a
-	// whole: it is just a title, so it reads as a colored label, and the
-	// empty space below the title (the body paragraph is always rendered,
-	// even when empty) is colored too instead of sticking out below the
-	// strip. The strip spans the whole card - see the -colored rule of
-	// .header in main.css.
+	// The color is applied to the title area - the colored strip of the
+	// header - when the card shows a body: the tags, the due date and
+	// the body then stay on the card background. A card that shows no
+	// body is colored as a whole: it is just a title, so the whole card
+	// is the strip. The header has a fixed height with the title
+	// centered in it, so every colored area is the same and a colored
+	// card is exactly as tall as the same card without a color - see
+	// the -colored and -no-body rules in main.css.
 	const showsBody = props.showCardBody && !!card.body && !!card.body.trim();
 
 	const headerClasses = useMemo(() => {
@@ -239,6 +245,11 @@ export default (props:Props) => {
 
 	const cardClasses = useMemo(() => {
 		const classes = ['card'];
+
+		// A card that shows no body is just its header: -no-body lets
+		// the header fill the card from edge to edge (see the -no-body
+		// rule in main.css).
+		if (!showsBody) classes.push('-no-body');
 
 		if (card.settings?.backgroundColor && !showsBody) {
 			classes.push('background-' + card.settings.backgroundColor);
