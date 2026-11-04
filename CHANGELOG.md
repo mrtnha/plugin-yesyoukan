@@ -1,3 +1,14 @@
+# v1.2.0
+
+- Cards are now edited in a dialog, opened by a single click on the card. The "+" button of a stack opens the same dialog to add a card. The dialog has separate title and description fields and asks for confirmation before discarding unsaved changes
+- The description editor is a full Markdown editor with Joplin's own editor theme and inline rendering (checkboxes, lists, tables, ...), a formatting toolbar with the same actions as Joplin's own editor, and Joplin-like keyboard behaviour: Enter continues lists, Tab/Shift+Tab indent and unindent, Ctrl/Cmd+Enter saves the card
+- A row of colour swatches in the card dialog sets the card's background colour. The palette is new - vivid, readable on both themes, and ordered so that it can double as a priority scale: green (done), yellow, orange, red (urgent), then pink, purple, cyan, blue, brown and grey
+- On the board, the colour of a card is applied to its title area; a card without a body is coloured as a whole
+- Fixed empty checkbox items ("- [ ] ") losing the trailing space that makes them checkboxes, so they no longer turn into plain text when saved, rendered or toggled
+- The in-place card editor and its confirm/newline/double-click settings were removed in favour of the click-to-open dialog
+- Improved spacing between the stack header elements
+- Note for users switching from the official plugin: the colour palette was reordered and redefined, and colours are stored in the note by their palette index - existing boards may show shifted colours, re-assign them once after switching
+
 # v1.1.3
 
 - Added option to display a card counter on each stack (enabled by default)
