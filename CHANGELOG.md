@@ -1,3 +1,8 @@
+# v1.2.1
+
+- Fixed cards with a color being taller than the same cards without a color: every colored area is now the same fixed-height header with the title centered in it, and a card keeps its height when a color is assigned or cleared, whether it has a description or not
+- Cards without a description no longer carry invisible empty space below the title - such a card is now exactly the colored header strip of a card with a description
+
 # v1.2.0
 
 - Cards are now edited in a dialog, opened by a single click on the card. The "+" button of a stack opens the same dialog to add a card. The dialog has separate title and description fields and asks for confirmation before discarding unsaved changes

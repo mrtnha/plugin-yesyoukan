@@ -2,7 +2,7 @@
 	"manifest_version": 1,
 	"id": "com.github.mrtnha.yesyoukan",
 	"app_min_version": "3.4.2",
-	"version": "1.2.0",
+	"version": "1.2.1",
 	"name": "YesYouKan",
 	"description": "Create and manage Kanban boards from Joplin",
 	"author": "Martin Hagemeier (fork of Laurent Cozic's YesYouKan)",
