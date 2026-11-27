@@ -478,6 +478,85 @@ selected swatch, and a diagonal slash on the "no color" swatch. */
 	}
 }
 
+/* Mobile card dialog: a full-screen sheet covering the visible part of the
+screen above the keyboard (positioned by CardDialog.tsx). From top to bottom:
+the bar with Cancel, the dialog title and the confirm button; then the
+title field, the editor box filling all the space left, and the color row. */
+.card-dialog.-mobile {
+	.card-dialog-topbar {
+		/* The outer columns share the space equally, so that the dialog
+		title is centered on the screen whatever the button widths. */
+		display: grid;
+		grid-template-columns: 1fr auto 1fr;
+		align-items: center;
+		min-height: 52px;
+		padding: 0 8px;
+		border-bottom: 1px solid var(--joplin-divider-color);
+		flex-shrink: 0;
+
+		> .title {
+			overflow: hidden;
+			text-overflow: ellipsis;
+			white-space: nowrap;
+		}
+	}
+
+	.card-dialog-content {
+		display: flex;
+		flex-direction: column;
+	}
+
+	/* The editor box takes all the height left between the title field and
+	the color row. Its minimum keeps a few lines of text visible when the
+	sheet is very short - the content then scrolls instead. */
+	.card-dialog-editor {
+		flex: 1 1 auto;
+		min-height: 10em;
+	}
+
+	/* The editor host is the flex column the editor fills (see the mobile
+	theme in CardDialogEditor.tsx). */
+	.card-dialog-editor-host {
+		display: flex;
+		flex-direction: column;
+		flex: 1 1 0;
+		min-height: 0;
+	}
+
+	/* The swatches share one row in equal columns and grow with the screen
+	width, up to 32px - larger and easier to tap than on desktop, never
+	wrapping onto a second row (which would take height from the editor when
+	the keyboard is open). The hover effect is disabled: on a touch screen,
+	:hover sticks to the last tapped swatch. */
+	.card-dialog-color-row {
+		display: grid;
+		grid-auto-flow: column;
+		grid-auto-columns: minmax(0, 1fr);
+		gap: 6px;
+		flex-shrink: 0;
+
+		> .color-swatch {
+			width: 100%;
+			max-width: 32px;
+			height: auto;
+			aspect-ratio: 1;
+			justify-self: center;
+
+			&:hover {
+				transform: none;
+			}
+		}
+	}
+}
+
+/* Touch layout of the formatting toolbar: a single row that scrolls
+horizontally, instead of wrapping onto several rows. */
+.card-dialog-toolbar.-touch {
+	flex-wrap: nowrap;
+	overflow-x: auto;
+	flex-shrink: 0;
+}
+
 .confirm-buttons {
 	display: flex;
 	justify-content: flex-end;

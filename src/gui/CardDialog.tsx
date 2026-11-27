@@ -5,6 +5,7 @@ import moveCaretToEnd from '../utils/moveCaretToEnd';
 import CardDialogToolbar, { FormattingCommand } from './CardDialogToolbar';
 import CardDialogColorRow from './CardDialogColorRow';
 import CardDialogEditor, { CardEditorHandle } from './editor/CardDialogEditor';
+import useVisualViewport from './hooks/useVisualViewport';
 import {
 	TextState,
 	toggleInlineFormat, toggleCode, toggleList, ListType, toggleBlockquote,
@@ -56,6 +57,22 @@ interface Props {
 //   current list item (or inserts an indent unit outside of a list), and
 //   Shift+Tab unindents. Ctrl/Cmd+[ and Ctrl/Cmd+] also indent and unindent.
 // - Escape closes the dialog (handled by the dialog itself).
+//
+// On mobile, the dialog is a full-screen sheet instead, laid out for the
+// on-screen keyboard:
+// - The sheet covers exactly the visible part of the screen above the
+//   keyboard (see useVisualViewport), so nothing is hidden behind the
+//   keyboard and nothing needs to be scrolled into view.
+// - Cancel, the dialog title and the confirm button are in a bar at the top,
+//   so they are always visible - not at the bottom, behind the keyboard.
+// - The description editor fills the space left, and the formatting toolbar
+//   is a single row of larger buttons that scrolls horizontally.
+// - The keyboard's Enter key in the title moves to the description ("next")
+//   instead of confirming: there is no Tab key on a phone, and the confirm
+//   button is always at hand in the top bar.
+// - In edit mode, no field is focused on open: the keyboard would otherwise
+//   cover the card the user just opened to read. In add mode, the title is
+//   focused like on desktop.
 export default (props:Props) => {
 	const [title, setTitle] = useState(props.initialTitle ?? '');
 	const [color, setColor] = useState(props.initialColor ?? '');
@@ -63,6 +80,22 @@ export default (props:Props) => {
 	const [discardDialogShown, setDiscardDialogShown] = useState(false);
 	const titleInputRef = useRef<HTMLInputElement>(null);
 	const editorRef = useRef<CardEditorHandle|null>(null);
+	const contentRef = useRef<HTMLDivElement>(null);
+
+	const isMobile = props.platform === 'mobile';
+	const viewport = useVisualViewport(isMobile);
+
+	// On mobile, the dialogs are placed in the visible part of the screen: by
+	// default, MUI places them in the layout viewport, which the on-screen
+	// keyboard does not shrink (and which can be larger than the screen).
+	const viewportSx = isMobile ? {
+		top: viewport.top,
+		left: viewport.left,
+		width: viewport.width,
+		height: viewport.height,
+		right: 'auto',
+		bottom: 'auto',
+	} : undefined;
 
 	const labels = props.mode === 'edit'
 		? { dialogTitle: 'Edit card', confirmButton: 'Save' }
@@ -73,6 +106,11 @@ export default (props:Props) => {
 	const backgroundColors = props.isDarkMode ? darkBackgroundColors : lightBackgroundColors;
 
 	useEffect(() => {
+		// On mobile, focusing a field opens the keyboard, which would cover
+		// the card the user opened to read - so in edit mode, the user taps
+		// the field to edit instead.
+		if (isMobile && props.mode === 'edit') return;
+
 		// Focus the title field when the dialog opens. MUI normally focuses the
 		// first focusable element, but we do it explicitly to be sure the caret
 		// is in the title field.
@@ -83,6 +121,21 @@ export default (props:Props) => {
 			if (props.mode === 'edit') moveCaretToEnd(titleInputRef.current);
 		});
 	}, []);
+
+	// On mobile, the sheet shrinks when the keyboard opens (and grows when it
+	// closes), which can leave the focused field or the caret below the
+	// visible area - bring them back into view.
+	useEffect(() => {
+		if (!isMobile) return;
+
+		const content = contentRef.current;
+		const active = document.activeElement;
+		if (!content || !active || !content.contains(active)) return;
+
+		const editorBox = active.closest('.card-dialog-editor');
+		(editorBox ?? active).scrollIntoView({ block: 'nearest' });
+		if (editorRef.current?.hasFocus()) editorRef.current.scrollCursorIntoView();
+	}, [isMobile, viewport.height]);
 
 	const onEditorSubmit = useCallback(() => {
 		// The confirm button is disabled while the title is empty, but be
@@ -195,7 +248,7 @@ export default (props:Props) => {
 		if (!linkDialogState) return null;
 
 		return (
-			<Dialog open={true} onClose={() => setLinkDialogState(null)} fullWidth maxWidth="xs">
+			<Dialog open={true} onClose={() => setLinkDialogState(null)} fullWidth maxWidth="xs" sx={viewportSx}>
 				<DialogTitle>Insert link</DialogTitle>
 				<DialogContent>
 					<TextField
@@ -231,20 +284,26 @@ export default (props:Props) => {
 		// Ctrl+Enter.
 		if (event.key === 'Enter') {
 			event.preventDefault();
-			onEditorSubmit();
+			if (isMobile) {
+				// The keyboard's Enter key is labelled "next" on mobile (see
+				// enterKeyHint) and moves to the description
+				editorRef.current?.focus();
+			} else {
+				onEditorSubmit();
+			}
 		} else if (event.key === 'Tab' && !event.shiftKey) {
 			// Tab skips the toolbar buttons and moves directly into the
 			// description editor
 			event.preventDefault();
 			editorRef.current?.focus();
 		}
-	}, [onEditorSubmit]);
+	}, [onEditorSubmit, isMobile]);
 
 	const renderDiscardDialog = () => {
 		if (!discardDialogShown) return null;
 
 		return (
-			<Dialog open={true} onClose={() => setDiscardDialogShown(false)} fullWidth maxWidth="xs">
+			<Dialog open={true} onClose={() => setDiscardDialogShown(false)} fullWidth maxWidth="xs" sx={viewportSx}>
 				<DialogTitle>Discard changes?</DialogTitle>
 				<DialogContent>
 					<Typography>All your changes will be lost.</Typography>
@@ -260,10 +319,9 @@ export default (props:Props) => {
 		);
 	}
 
-	return (
-		<Dialog open={true} onClose={onEditorCancel} fullWidth maxWidth="sm">
-			<DialogTitle>{labels.dialogTitle}</DialogTitle>
-			<DialogContent>
+	const renderFields = () => {
+		return (
+			<>
 				<TextField
 					inputRef={titleInputRef}
 					fullWidth
@@ -272,6 +330,7 @@ export default (props:Props) => {
 					value={title}
 					onChange={(event) => setTitle(event.currentTarget.value)}
 					onKeyDown={onTitleKeyDown}
+					inputProps={isMobile ? { enterKeyHint: 'next' } : undefined}
 				/>
 				{/* The editor comes before the toolbar in the DOM so that Tab from
 				the title field moves directly into the text, skipping the toolbar
@@ -285,7 +344,7 @@ export default (props:Props) => {
 						onOpenLink={props.onOpenLink}
 						onSubmit={onEditorSubmit}
 					/>
-					<CardDialogToolbar onCommand={onFormattingCommand} />
+					<CardDialogToolbar onCommand={onFormattingCommand} touch={isMobile} />
 				</div>
 				{/* The color row is a separate element below the editor box:
 				the color applies to the whole card, not to the description. */}
@@ -294,6 +353,32 @@ export default (props:Props) => {
 					value={color}
 					onChange={setColor}
 				/>
+			</>
+		);
+	}
+
+	if (isMobile) {
+		return (
+			<Dialog open={true} onClose={onEditorCancel} fullScreen className="card-dialog -mobile" sx={viewportSx}>
+				<div className="card-dialog-topbar">
+					<Button onClick={onEditorCancel} sx={{ justifySelf: 'start' }}>Cancel</Button>
+					<DialogTitle className="title" sx={{ p: 0, fontSize: '1.1rem', fontWeight: 'bold' }}>{labels.dialogTitle}</DialogTitle>
+					<Button onClick={onEditorSubmit} color="primary" disabled={!title.trim()} sx={{ justifySelf: 'end', fontWeight: 'bold' }}>{labels.confirmButton}</Button>
+				</div>
+				<DialogContent ref={contentRef} className="card-dialog-content" sx={{ px: 2, pb: 2 }}>
+					{renderFields()}
+				</DialogContent>
+				{renderLinkDialog()}
+				{renderDiscardDialog()}
+			</Dialog>
+		);
+	}
+
+	return (
+		<Dialog open={true} onClose={onEditorCancel} fullWidth maxWidth="sm">
+			<DialogTitle>{labels.dialogTitle}</DialogTitle>
+			<DialogContent>
+				{renderFields()}
 			</DialogContent>
 			<DialogActions>
 				<Button onClick={onEditorCancel}>Cancel</Button>

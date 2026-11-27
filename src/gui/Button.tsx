@@ -10,11 +10,15 @@ export interface Props {
 	disabled?: boolean;
 	title?: string;
 	label?: string;
+	// Width and height of the button in pixels (default: 26). Touch layouts
+	// pass a larger size so that the buttons are easy to tap.
+	size?: number;
 }
 
 export default (props: Props) => {
 	const renderButton = () => {
 		const isIconOnly = !props.label;
+		const size = props.size ?? 26;
 
 		return (
 			<MUIButton
@@ -23,17 +27,17 @@ export default (props: Props) => {
 				sx={
 					isIconOnly
 						? {
-							width: 26,
-							height: 26,
-							minWidth: 26,
-							maxWidth: 26,
-							minHeight: 26,
-							maxHeight: 26,
+							width: size,
+							height: size,
+							minWidth: size,
+							maxWidth: size,
+							minHeight: size,
+							maxHeight: size,
 						}
 						: {
 							px: 1.5,
-							minHeight: 26,
-							height: 26,
+							minHeight: size,
+							height: size,
 						}
 				}
 			>

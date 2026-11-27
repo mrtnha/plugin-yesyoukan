@@ -72,6 +72,11 @@ const toolbarButtons: ToolbarButton[] = [
 
 interface Props {
 	onCommand: (command: FormattingCommand) => void;
+	// Touch layout (mobile): larger buttons in a single row that scrolls
+	// horizontally, instead of small buttons wrapping onto several rows - on
+	// a phone, the wrapped rows would take a large part of the space left
+	// above the keyboard.
+	touch?: boolean;
 }
 
 export default (props: Props) => {
@@ -82,14 +87,21 @@ export default (props: Props) => {
 					key={button.command}
 					icon={button.icon}
 					title={button.title}
+					size={props.touch ? 40 : undefined}
 					onClick={() => props.onCommand(button.command)}
 				/>
 			);
 		});
 	}
 
+	// In the touch layout, tapping a button must not take the focus away from
+	// the editor: the on-screen keyboard would close and immediately reopen
+	// (when the focus is restored after the command), resizing the dialog
+	// twice. Cancelling the mousedown keeps the focus where it is.
+	const onMouseDown = props.touch ? (event: React.MouseEvent) => event.preventDefault() : undefined;
+
 	return (
-		<div className="card-dialog-toolbar">
+		<div className={props.touch ? 'card-dialog-toolbar -touch' : 'card-dialog-toolbar'} role="toolbar" aria-label="Formatting" onMouseDown={onMouseDown}>
 			{renderButtons()}
 		</div>
 	);

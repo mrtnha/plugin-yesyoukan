@@ -26,6 +26,10 @@ import renderTables from './rendering/renderTables';
 
 export interface CardEditorHandle {
 	focus: () => void;
+	hasFocus: () => boolean;
+	// Scrolls the editor so that the caret is visible - used when the editor
+	// box shrinks, e.g. when the on-screen keyboard opens on mobile.
+	scrollCursorIntoView: () => void;
 	getValue: () => string;
 	getTextState: () => TextState;
 	applyTransform: (transform:(state: TextState)=>TextState|null) => boolean;
@@ -85,6 +89,24 @@ const dialogLayoutTheme = EditorView.theme({
 	'.cm-scroller': {
 		minHeight: '10em',
 		maxHeight: '24em',
+		overflowY: 'auto',
+	},
+	'.cm-content': {
+		padding: '8px 10px',
+	},
+});
+
+// On mobile, the dialog is a full-screen sheet that ends at the top of the
+// keyboard, and the editor fills all the space left in it: its host is a flex
+// column sized by the dialog layout (see .card-dialog.-mobile in main.css), the
+// editor takes all of it and scrolls inside it, without the height caps of the
+// desktop dialog.
+const mobileDialogLayoutTheme = EditorView.theme({
+	'&': {
+		flex: '1 1 0',
+		minHeight: '0',
+	},
+	'.cm-scroller': {
 		overflowY: 'auto',
 	},
 	'.cm-content': {
@@ -157,7 +179,7 @@ export default (props:Props) => {
 					// Joplin's editor theme (font, colors, caret, selection,
 					// headings, code blocks, ...)
 					...createTheme(buildEditorTheme(props.isDarkMode, props.platform)),
-					dialogLayoutTheme,
+					props.platform === 'mobile' ? mobileDialogLayoutTheme : dialogLayoutTheme,
 
 					// Joplin's "Render markup in editor" extensions
 					replaceCheckboxes,
@@ -204,6 +226,8 @@ export default (props:Props) => {
 
 		props.editorHandleRef.current = {
 			focus: () => view.focus(),
+			hasFocus: () => view.hasFocus,
+			scrollCursorIntoView: () => view.dispatch({ effects: EditorView.scrollIntoView(view.state.selection.main.head) }),
 			getValue: () => view.state.doc.toString(),
 			getTextState: () => getTextState(view),
 			applyTransform: transform => applyTransform(view, transform),
