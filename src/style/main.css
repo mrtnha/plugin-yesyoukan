@@ -17,16 +17,29 @@ ul, ol {
 	width: 100%
 }
 
+/* The content must never be wider than the window: body is a row flexbox, and
+a flex item without a width grows to the min-content width of its content by
+default (min-width: auto) - here, all the stacks side by side. On mobile, where
+Joplin puts the plugin HTML directly into #joplin-plugin-content without the
+width-capped wrapper of the desktop app, the whole page then became as wide as
+the board, the browser enlarged the layout viewport to fit it, and fixed
+elements such as the dialogs were centered in that oversized viewport - far to
+the right of and below the visible area. With the width capped, only .stacks
+scrolls horizontally, as intended. */
 #joplin-plugin-content {
 	display: flex;
     flex-direction: column;
     min-height: 100%;
     height: 100%;
+    width: 100%;
+    min-width: 0;
 }
 
 #root {
 	display: flex;
     min-height: 100%;
+    width: 100%;
+    min-width: 0;
 }
 
 .app {
@@ -36,6 +49,7 @@ ul, ol {
 	font-size: var(--joplin-font-size);
 	flex-direction: column;
 	width: 100%;
+	min-width: 0;
 }
 
 .stacks {
