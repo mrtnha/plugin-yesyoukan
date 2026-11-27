@@ -1,3 +1,10 @@
+# v1.3.0
+
+- Mobile: the card dialog is now a full-screen sheet that ends at the top of the on-screen keyboard, with Cancel and Add/Save in a bar at the top - always visible, never behind the keyboard or off the edge of the screen
+- Mobile: the keyboard's Enter key in the card title now moves to the description ("next") instead of adding the card; the description fills the space left, and the formatting toolbar is one row of larger buttons that scrolls sideways and no longer closes the keyboard when tapped
+- Mobile: editing a card no longer opens the keyboard straight away, so the card can be read first
+- Fixed the board making the whole page wider than the screen on mobile, which pushed dialogs off to the right and below the visible area. Only the stacks scroll sideways now
+
 # v1.2.1
 
 - Fixed cards with a color being taller than the same cards without a color: every colored area is now the same fixed-height header with the title centered in it, and a card keeps its height when a color is assigned or cleared, whether it has a description or not
